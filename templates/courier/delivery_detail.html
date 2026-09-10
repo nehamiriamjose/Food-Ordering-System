@@ -1,0 +1,264 @@
+{% extends 'courier/base_courier.html' %}
+
+{% block title %}Mission Controller #{{ order.order_number }} | CraveCart Courier{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<style>
+  .leaflet-popup-content-wrapper {
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+    font-family: inherit;
+  }
+  .courier-marker {
+    background: #FFF;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+  }
+  .pulse-ring {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(244, 81, 58, 0.4);
+    animation: pulseAnimation 2s infinite;
+    z-index: -1;
+  }
+  @keyframes pulseAnimation {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 960px;">
+  <!-- Header / Breadcrumb -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin: 0;">
+          Mission Controller #{{ order.order_number }}
+        </h1>
+        <span class="tag tag-primary" style="font-size: 0.85rem; padding: 4px 12px; font-weight: 800;">
+          {{ order.status|replace('_', ' ')|capitalize }}
+        </span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+        Assigned Vehicle: {{ courier.vehicle_type }} ({{ courier.vehicle_plate }}) • Order Placed: {{ order.created_at[:16] if order.created_at else 'Just now' }}
+      </p>
+    </div>
+
+    <div style="background: var(--success-light); color: var(--success); padding: 10px 20px; border-radius: var(--radius-full); font-weight: 800; font-size: 1.15rem; box-shadow: var(--shadow-xs);">
+      💰 Payout: ${{ "%.2f"|format(order.delivery_fee + order.tip) }}
+    </div>
+  </div>
+
+  <!-- Interactive Mission Status Action Bar -->
+  <div style="background: #FFF; border: 2px solid var(--primary); border-radius: var(--radius-xl); padding: 24px; margin-bottom: 28px; box-shadow: 0 10px 25px -5px rgba(244, 81, 58, 0.12);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin: 0;">
+          ⚡ Live Mission Action Dispatcher
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 2px 0 0 0;">
+          Advance the delivery step to send instant real-time push notifications to the customer.
+        </p>
+      </div>
+
+      <!-- External Turn-by-Turn GPS Button -->
+      {% set dest_query = (address.street ~ ', ' ~ address.city) | urlencode %}
+      <a href="https://www.google.com/maps/dir/?api=1&origin={{ restaurant.lat if restaurant.lat else '40.7128' }},{{ restaurant.lng if restaurant.lng else '-74.0060' }}&destination={{ dest_query }}" target="_blank" class="btn btn-outline btn-sm" style="font-weight: 700; display: flex; align-items: center; gap: 6px;">
+        🧭 Turn-by-Turn GPS
+      </a>
+    </div>
+
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
+      {% if order.status in ('placed', 'confirmed', 'preparing', 'ready') %}
+      <button class="btn btn-primary btn-lg mission-step-btn" data-order-number="{{ order.order_number }}" data-next-status="picked_up" style="font-weight: 800; padding: 12px 24px;">
+        📦 1. Confirm Order Pickup at {{ restaurant.name }}
+      </button>
+      {% elif order.status == 'picked_up' %}
+      <button class="btn btn-primary btn-lg mission-step-btn" data-order-number="{{ order.order_number }}" data-next-status="on_the_way" style="font-weight: 800; padding: 12px 24px;">
+        🛵 2. Depart on Road Towards Customer
+      </button>
+      {% elif order.status == 'on_the_way' %}
+      <button class="btn btn-primary btn-lg mission-step-btn" data-order-number="{{ order.order_number }}" data-next-status="delivered" style="background: var(--success); font-weight: 800; padding: 12px 24px;">
+        🎉 3. Confirm Hand-off & Delivered
+      </button>
+      {% else %}
+      <div class="tag tag-success" style="font-size: 1.05rem; padding: 12px 24px; font-weight: 800;">
+        ✓ Delivery Mission Completed! Great job!
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Interactive Live Delivery Route Map -->
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 20px; margin-bottom: 28px; box-shadow: var(--shadow-xs);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.3rem;">🗺️</span>
+        <div>
+          <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--secondary); margin: 0;">Interactive Route Navigation</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Live GPS coordinates for pickup kitchen and dropoff doorstep</p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; font-size: 0.82rem; font-weight: 700;">
+        <span class="tag" style="background: var(--bg-muted); color: var(--secondary);">📏 Est. Distance: ~2.1 miles</span>
+        <span class="tag tag-primary">⏱️ Est. Travel: ~8-12 mins</span>
+      </div>
+    </div>
+
+    <!-- Map Container -->
+    <div id="courierRouteMap" style="height: 360px; width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border-color); overflow: hidden; position: relative; z-index: 1;"></div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 0.78rem; color: var(--text-muted);">
+      <div>🟢 Route active • Map updates on vehicle repositioning</div>
+      <div>Pickup: <strong>{{ restaurant.name }}</strong> ➔ Dropoff: <strong>{{ address.street }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Details Columns: Pickup & Dropoff -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+    
+    <!-- Step 1: Restaurant Pickup Point -->
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 24px; box-shadow: var(--shadow-xs);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(244, 81, 58, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          🍳
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">1. Pickup Kitchen</span>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin: 0;">{{ restaurant.name }}</h3>
+        </div>
+      </div>
+
+      <p style="font-size: 0.9rem; color: var(--secondary); margin-bottom: 16px; line-height: 1.5; background: var(--bg-muted); padding: 12px; border-radius: var(--radius-md);">
+        📍 <strong>Address:</strong> {{ restaurant.address }}<br>
+        📞 <strong>Phone:</strong> <a href="tel:{{ restaurant.phone }}" style="color: var(--primary); font-weight: 700;">{{ restaurant.phone }}</a>
+      </p>
+
+      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px;">
+        <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary); margin-bottom: 8px; text-transform: uppercase;">
+          🛍️ Order Package Checklist ({{ items|length }} items):
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          {% for it in items %}
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; padding: 4px 0; border-bottom: 1px dashed var(--border-color);">
+            <span><strong>{{ it.quantity }}x</strong> {{ it.name }}</span>
+            <span style="color: var(--text-muted);">${{ "%.2f"|format(it.total_price) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Customer Dropoff Point -->
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 24px; box-shadow: var(--shadow-xs);">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+          🏠
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">2. Drop-off Customer</span>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin: 0;">{{ customer.name if customer else 'Customer' }}</h3>
+        </div>
+      </div>
+
+      <p style="font-size: 0.9rem; color: var(--secondary); margin-bottom: 16px; line-height: 1.5; background: var(--bg-muted); padding: 12px; border-radius: var(--radius-md);">
+        📍 <strong>Destination:</strong> {{ address.street }}{% if address.apartment %}, {{ address.apartment }}{% endif %}<br>
+        {{ address.city }}, {{ address.zip_code }}<br>
+        📞 <strong>Phone:</strong> <a href="tel:{{ customer.phone if customer else '' }}" style="color: var(--primary); font-weight: 700;">{{ customer.phone if customer else '(555) 234-5678' }}</a>
+      </p>
+
+      {% if order.delivery_instructions %}
+      <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: var(--radius-md); padding: 14px; font-size: 0.88rem; color: #9A3412;">
+        <div style="font-weight: 800; margin-bottom: 4px;">📝 Gate / Door Instructions:</div>
+        "{{ order.delivery_instructions }}"
+      </div>
+      {% else %}
+      <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 14px; font-size: 0.85rem; color: var(--text-muted);">
+        <em>No special dropoff instructions provided. Standard contactless delivery.</em>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const restLat = parseFloat("{{ restaurant.lat if restaurant and restaurant.lat else '40.7128' }}") || 40.7128;
+  const restLng = parseFloat("{{ restaurant.lng if restaurant and restaurant.lng else '-74.0060' }}") || -74.0060;
+  
+  // Customer dropoff coordinate (simulated offset for realistic navigation demo if not explicit)
+  const custLat = restLat + 0.0125;
+  const custLng = restLng + 0.0160;
+
+  const mapCenter = [(restLat + custLat) / 2, (restLng + custLng) / 2];
+
+  const map = L.map('courierRouteMap').setView(mapCenter, 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Restaurant Icon
+  const restIcon = L.divIcon({
+    className: 'custom-map-icon',
+    html: `<div style="background: #FFF; border: 2px solid #F4513A; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">🍳</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+
+  // Customer Icon
+  const custIcon = L.divIcon({
+    className: 'custom-map-icon',
+    html: `<div style="background: #FFF; border: 2px solid #22C55E; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">🏠</div>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+
+  // Markers
+  const restMarker = L.marker([restLat, restLng], { icon: restIcon }).addTo(map);
+  restMarker.bindPopup(`<strong>🍳 Pickup: {{ restaurant.name }}</strong><br>{{ restaurant.address }}`);
+
+  const custMarker = L.marker([custLat, custLng], { icon: custIcon }).addTo(map);
+  custMarker.bindPopup(`<strong>🏠 Dropoff: {{ customer.name if customer else 'Customer' }}</strong><br>{{ address.street }}`);
+
+  // Route Waypoints Polyline
+  const routePoints = [
+    [restLat, restLng],
+    [restLat + 0.004, restLng + 0.007],
+    [restLat + 0.009, restLng + 0.011],
+    [custLat, custLng]
+  ];
+
+  const routeLine = L.polyline(routePoints, {
+    color: '#F4513A',
+    weight: 5,
+    opacity: 0.85,
+    dashArray: '10, 10'
+  }).addTo(map);
+
+  // Fit map bounds
+  map.fitBounds(L.latLngBounds([ [restLat, restLng], [custLat, custLng] ]), { padding: [40, 40] });
+
+  // Invalidate map size after rendering
+  setTimeout(() => { map.invalidateSize(); }, 300);
+});
+</script>
+{% endblock %}

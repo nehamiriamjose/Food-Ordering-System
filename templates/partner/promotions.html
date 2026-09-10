@@ -1,0 +1,763 @@
+{% extends 'partner/base_partner.html' %}
+
+{% block title %}Promotions & Deals Studio | {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<style>
+  @keyframes urgentPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.03); opacity: 0.85; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pulse-urgent {
+    animation: urgentPulse 1.8s infinite ease-in-out;
+  }
+  .duration-pill.selected {
+    border-color: var(--primary) !important;
+    background: rgba(244, 81, 58, 0.08) !important;
+  }
+  .duration-pill.selected div:first-child {
+    color: var(--primary) !important;
+  }
+</style>
+
+<!-- Header Section -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary);">Promotions & Deals Studio</h1>
+      <span class="tag tag-primary" style="font-size: 0.85rem; padding: 4px 10px;">{{ promos|length }} Campaigns</span>
+    </div>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+      Supercharge your restaurant sales, launch time-limited discount countdowns, and attract foodies across CraveCart.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <button class="btn btn-primary" onclick="openPromoModal()" style="display: flex; align-items: center; gap: 8px; font-weight: 700; box-shadow: 0 4px 14px rgba(244, 81, 58, 0.35);">
+      <span style="font-size: 1.2rem; line-height: 1;">+</span> Launch Timed Campaign
+    </button>
+  </div>
+</div>
+
+<!-- Promo Performance Stats Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-xs);">
+    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Active Deals</div>
+    <div style="font-size: 1.8rem; font-weight: 800; color: var(--success); margin-top: 4px;">
+      {{ promos|selectattr('is_active', 'equalto', 1)|list|length }}
+    </div>
+    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Ticking countdowns live for checkout</div>
+  </div>
+
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-xs);">
+    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Inactive / Expired</div>
+    <div style="font-size: 1.8rem; font-weight: 800; color: var(--text-muted); margin-top: 4px;">
+      {{ promos|selectattr('is_active', 'equalto', 0)|list|length }}
+    </div>
+    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Sales ended or paused by owner</div>
+  </div>
+
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 20px; box-shadow: var(--shadow-xs);">
+    <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Featured Promotion</div>
+    <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-top: 8px; font-family: monospace;">
+      {% if promos %}{{ promos[0].code }}{% else %}NONE{% endif %}
+    </div>
+    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Auto-recommended in customer discovery</div>
+  </div>
+</div>
+
+<!-- Promo Codes Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px;">
+  {% for p in promos %}
+  <div id="promo-card-{{ p.id }}" 
+       class="promo-card {% if not p.is_active %}is-expired{% endif %}"
+       data-promo-id="{{ p.id }}" 
+       data-expires-at="{{ p.expires_at or '' }}" 
+       data-is-active="{{ p.is_active }}"
+       style="background: #FFF; border: 1.5px solid {% if p.is_active %}rgba(244, 81, 58, 0.25){% else %}var(--border-color){% endif %}; border-radius: var(--radius-xl); padding: 24px; box-shadow: {% if p.is_active %}0 8px 24px rgba(244, 81, 58, 0.08){% else %}var(--shadow-xs){% endif %}; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; {% if not p.is_active %}opacity: 0.78; background: #FAFAFA;{% endif %}; transition: all 0.3s ease;">
+
+    <!-- Top Badge / Ribbon -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <!-- Status Tag -->
+          <span id="status-tag-{{ p.id }}" class="tag {% if p.is_active %}tag-success{% else %}tag-muted{% endif %}" style="font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+            {% if p.is_active %}
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A;"></span> Live on Store
+            {% else %}
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #94A3B8;"></span> Paused / Expired
+            {% endif %}
+          </span>
+
+          <!-- Discount Tag -->
+          <span class="tag" style="background: rgba(244, 81, 58, 0.1); color: var(--primary); font-size: 0.75rem; font-weight: 800;">
+            {% if p.discount_type == 'percent' %}{{ p.discount_value|int }}% OFF{% else %}${{ "%.2f"|format(p.discount_value) }} OFF{% endif %}
+          </span>
+        </div>
+
+        <div style="display: flex; gap: 6px;">
+          <!-- Copy code button -->
+          <button onclick="copyPromoCode('{{ p.code }}', this)" title="Copy Code" style="background: var(--bg-muted); border: none; border-radius: var(--radius-md); padding: 6px 10px; font-size: 0.8rem; cursor: pointer; color: var(--secondary); font-weight: 700; transition: all 0.2s;">
+            📋 Copy
+          </button>
+        </div>
+      </div>
+
+      <!-- Coupon Visual Box -->
+      <div style="background: linear-gradient(135deg, rgba(244, 81, 58, 0.05), rgba(255, 140, 66, 0.08)); border: 2px dashed {% if p.is_active %}rgba(244, 81, 58, 0.4){% else %}#CBD5E1{% endif %}; border-radius: var(--radius-lg); padding: 14px; margin-bottom: 14px; text-align: center;">
+        <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">PROMO CODE</div>
+        <div style="font-family: monospace; font-size: 1.5rem; font-weight: 900; color: var(--primary); letter-spacing: 2px;">
+          {{ p.code }}
+        </div>
+      </div>
+
+      <!-- Live Countdown Box -->
+      <div id="countdown-box-{{ p.id }}" 
+           style="background: {% if p.is_active %}rgba(244, 81, 58, 0.06){% else %}#F1F5F9{% endif %}; border: 1px solid {% if p.is_active %}rgba(244, 81, 58, 0.25){% else %}#E2E8F0{% endif %}; border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="clock-icon-{{ p.id }}" style="font-size: 1.15rem;">⏳</span>
+          <div>
+            <div style="font-size: 0.68rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Deal Countdown</div>
+            <div id="countdown-text-{{ p.id }}" style="font-family: monospace; font-size: 0.98rem; font-weight: 800; color: var(--secondary);">
+              Calculating...
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); text-align: right;">
+          <span style="display: block; font-weight: 600;">Expires:</span>
+          <span id="expiry-date-label-{{ p.id }}" style="font-weight: 700; color: var(--secondary);">{{ p.expires_at[:16] if p.expires_at else 'Ongoing' }}</span>
+        </div>
+      </div>
+
+      <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px; line-height: 1.3;">
+        {{ p.description }}
+      </h3>
+
+      <div style="font-size: 0.83rem; color: var(--text-muted); margin-bottom: 18px; line-height: 1.6;">
+        <div>💰 <strong>Min. Spend:</strong> ${{ "%.2f"|format(p.min_spend) }}</div>
+        <div>🏷️ <strong>Discount Value:</strong> {% if p.discount_type == 'percent' %}{{ p.discount_value }}% (Max ${{ "%.2f"|format(p.max_discount) }}){% else %}${{ "%.2f"|format(p.discount_value) }} flat savings{% endif %}</div>
+      </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 14px; flex-wrap: wrap;">
+      <!-- Toggle Active Status Form -->
+      <form action="{{ url_for('partner_toggle_promotion', promo_id=p.id) }}" method="POST" style="flex: 1; min-width: 130px;">
+        <button type="submit" class="btn btn-outline" style="width: 100%; font-size: 0.82rem; padding: 8px 10px; font-weight: 700; {% if p.is_active %}color: #D97706; border-color: #FCD34D;{% else %}color: var(--success); border-color: #86EFAC;{% endif %}">
+          {% if p.is_active %}⏸ Pause Deal{% else %}▶ Resume Deal{% endif %}
+        </button>
+      </form>
+
+      <!-- Extend Duration Button -->
+      <button type="button" class="btn btn-outline" onclick="openExtendModal({{ p.id }}, '{{ p.code }}')" style="font-size: 0.82rem; padding: 8px 10px; font-weight: 700; color: var(--primary); border-color: rgba(244, 81, 58, 0.4); cursor: pointer;" title="Extend Countdown">
+        ⚡ Extend
+      </button>
+
+      <!-- Delete Form with Custom Modal -->
+      <form action="{{ url_for('partner_delete_promotion', promo_id=p.id) }}" method="POST">
+        <button type="button" class="btn btn-outline" style="font-size: 0.82rem; padding: 8px 10px; color: #DC2626; border-color: #FCA5A5; cursor: pointer;" title="Delete Campaign" onclick="confirmAction(event, 'Delete Promotional Campaign?', 'Are you sure you want to delete campaign {{ p.code }}? Customers will no longer be able to use this promotional discount.', 'Yes, Delete Campaign', 'danger', '🗑️')">
+          🗑️
+        </button>
+      </form>
+    </div>
+
+  </div>
+  {% else %}
+  <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #FFF; border-radius: var(--radius-xl); border: 2px dashed var(--border-color);">
+    <div style="font-size: 3.5rem; margin-bottom: 12px;">🎟️</div>
+    <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">No Promo Campaigns Yet</h3>
+    <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 440px; margin: 0 auto 20px auto;">
+      Create your first promotion code with an automatic countdown timer to drive high conversions and boost your sales.
+    </p>
+    <button class="btn btn-primary" onclick="openPromoModal()" style="font-weight: 700;">
+      + Launch First Campaign
+    </button>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- =========================================================
+     MODAL: EXTEND CAMPAIGN DURATION (Glassmorphism & High Z-Index)
+     ========================================================= -->
+<div id="extendModal" class="custom-modal-backdrop" style="z-index: 100005;">
+  <div class="custom-modal-dialog" style="max-width: 460px; text-align: left; padding: 26px 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="background: rgba(244, 81, 58, 0.1); color: var(--primary); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">⚡</div>
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin: 0;">Extend Deal Countdown</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 2px 0 0 0;" id="extendModalSubtitle">Add time & reactivate sale</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeExtendModal()" style="background: none; border: none; font-size: 1.3rem; color: var(--text-muted); cursor: pointer; padding: 2px 6px;">✕</button>
+    </div>
+
+    <form id="extendPromoForm" method="POST" onsubmit="handleExtendSubmit(event)">
+      <input type="hidden" id="extendTargetPromoId" value="">
+      <input type="hidden" id="selectedExtendDays" name="extend_days" value="3">
+
+      <div style="margin-bottom: 22px;">
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--secondary); margin-bottom: 10px;">
+          Choose Extension Duration:
+        </label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="extend-pill" id="ext-pill-1" onclick="selectExtendPill(1)" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;">
+            <strong style="font-size: 0.92rem; display: block; color: var(--secondary);">⚡ +1 Day</strong>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">24h Flash Extension</span>
+          </div>
+          <div class="extend-pill selected" id="ext-pill-3" onclick="selectExtendPill(3)" style="border: 1.5px solid var(--primary); background: rgba(244, 81, 58, 0.08); border-radius: var(--radius-md); padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s;">
+            <strong style="font-size: 0.92rem; display: block; color: var(--primary);">🔥 +3 Days</strong>
+            <span style="font-size: 0.72rem; color: var(--primary);">Weekend Special</span>
+          </div>
+          <div class="extend-pill" id="ext-pill-7" onclick="selectExtendPill(7)" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;">
+            <strong style="font-size: 0.92rem; display: block; color: var(--secondary);">🗓️ +7 Days</strong>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Full Week Extension</span>
+          </div>
+          <div class="extend-pill" id="ext-pill-14" onclick="selectExtendPill(14)" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;">
+            <strong style="font-size: 0.92rem; display: block; color: var(--secondary);">⏳ +14 Days</strong>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">2 Weeks Extension</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" onclick="closeExtendModal()">Cancel</button>
+        <button type="submit" id="extendSubmitBtn" class="btn btn-primary" style="font-weight: 700; padding: 10px 22px;">
+          🚀 Extend & Go Live
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================
+     MODAL: CREATE NEW PROMOTIONAL CAMPAIGN WITH COUNTDOWN
+     ========================================================= -->
+<div id="promoModal" class="custom-modal-backdrop" style="z-index: 100005;">
+  <div class="custom-modal-dialog" style="max-width: 620px; max-height: 90vh; overflow-y: auto; text-align: left; padding: 26px 28px;">
+    
+    <!-- Modal Header -->
+    <div style="padding-bottom: 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #FFF; z-index: 10;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="background: var(--primary-light); color: var(--primary); width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🎟️</div>
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">Launch Timed Promotional Campaign</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Set countdown duration; deal turns off automatically when timer expires</p>
+        </div>
+      </div>
+      <button type="button" onclick="closePromoModal()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer; padding: 4px 8px; border-radius: 6px;">✕</button>
+    </div>
+
+    <!-- Modal Form -->
+    <form action="{{ url_for('partner_add_promotion') }}" method="POST" style="padding-top: 18px;">
+      
+      <!-- Quick Presets -->
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">
+          ⚡ Fast Preset Templates
+        </label>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="applyPreset('FLASH20', '20% off entire menu on orders over $25', 'percent', 20, 25, 15, '1')" style="font-size: 0.78rem;">
+            ⚡ 24h Flash (20% Off)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="applyPreset('WEEKEND15', '15% off weekend family meals', 'percent', 15, 30, 12, '3')" style="font-size: 0.78rem;">
+            🔥 3-Day Weekend (15% Off)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="applyPreset('FEAST50', '50% mega blowout deal', 'percent', 50, 30, 25, '7')" style="font-size: 0.78rem;">
+            🎁 7-Day Blowout (50% Off)
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="applyPreset('SAVE10', '$10 off big orders above $40', 'fixed', 10, 40, 10, '14')" style="font-size: 0.78rem;">
+            💵 $10 Flat Off ($40+ min)
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Coupon Preview Card with Countdown Preview -->
+      <div style="background: linear-gradient(135deg, #FFF7ED, #FFEDD5); border: 2px dashed rgba(244, 81, 58, 0.4); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div>
+            <span style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px;">Customer View Preview</span>
+            <div id="previewCode" style="font-family: monospace; font-size: 1.4rem; font-weight: 900; color: var(--secondary);">PROMO20</div>
+            <div id="previewDesc" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">20% off all delicious orders</div>
+          </div>
+          <div id="previewBadge" class="tag tag-primary" style="font-size: 1rem; font-weight: 800; padding: 6px 14px;">
+            20% OFF
+          </div>
+        </div>
+
+        <!-- Countdown Preview Bar -->
+        <div style="background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(244, 81, 58, 0.2); border-radius: var(--radius-md); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+          <span style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--primary);">
+            ⏱️ <span id="previewDurationLabel">Live Countdown: 7 Days (Ends in 6d 23h 59m)</span>
+          </span>
+          <span class="tag tag-success" style="font-size: 0.7rem; font-weight: 800;">Auto-Expires at Zero</span>
+        </div>
+      </div>
+
+      <!-- Code & Generator -->
+      <div style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--secondary);">
+            Campaign Promo Code <span style="color: var(--primary);">*</span>
+          </label>
+          <button type="button" onclick="generateRandomCode()" style="background: none; border: none; color: var(--primary); font-size: 0.8rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
+            🎲 Generate Code
+          </button>
+        </div>
+        <input type="text" id="promoCodeInput" name="code" required placeholder="e.g. CRAVE25, TASTY50, FLASHDEAL" style="text-transform: uppercase; font-family: monospace; font-size: 1.05rem; font-weight: 800; letter-spacing: 1px;" oninput="updateLivePreview()">
+      </div>
+
+      <!-- Description -->
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+          Campaign Description <span style="color: var(--primary);">*</span>
+        </label>
+        <input type="text" id="promoDescInput" name="description" required placeholder="e.g. 20% discount on all artisan pizzas & burgers" oninput="updateLivePreview()">
+      </div>
+
+      <!-- Duration / Countdown Setter -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--secondary);">
+            ⏳ Countdown Duration (Days Set by Owner) <span style="color: var(--primary);">*</span>
+          </label>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Sale turns off when timer reaches 0</span>
+        </div>
+        
+        <!-- Duration Selector Pills -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px;">
+          <div class="duration-pill" id="pill-1" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;" onclick="selectDurationPill(1)">
+            <input type="radio" name="duration_days" value="1" style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">⚡ 1 Day</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">24h Flash Sale</div>
+          </div>
+          <div class="duration-pill" id="pill-3" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;" onclick="selectDurationPill(3)">
+            <input type="radio" name="duration_days" value="3" style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">🔥 3 Days</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Weekend Deal</div>
+          </div>
+          <div class="duration-pill selected" id="pill-7" style="border: 1.5px solid var(--primary); background: rgba(244, 81, 58, 0.08); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s;" onclick="selectDurationPill(7)">
+            <input type="radio" name="duration_days" value="7" checked style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--primary);">🗓️ 7 Days</div>
+            <div style="font-size: 0.7rem; color: var(--primary);">Standard Week</div>
+          </div>
+          <div class="duration-pill" id="pill-14" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;" onclick="selectDurationPill(14)">
+            <input type="radio" name="duration_days" value="14" style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">⏳ 14 Days</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Bi-Weekly Promo</div>
+          </div>
+          <div class="duration-pill" id="pill-30" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;" onclick="selectDurationPill(30)">
+            <input type="radio" name="duration_days" value="30" style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">📅 30 Days</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Monthly Campaign</div>
+          </div>
+          <div class="duration-pill" id="pill-custom" style="border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; cursor: pointer; text-align: center; transition: all 0.2s; background: #FFF;" onclick="selectDurationPill('custom')">
+            <input type="radio" name="duration_days" value="custom" style="display: none;">
+            <div style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">⚙️ Custom</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">Exact Date & Time</div>
+          </div>
+        </div>
+
+        <!-- Custom Date/Time input -->
+        <div id="customExpiryContainer" style="display: none; background: var(--bg-muted); border-radius: var(--radius-md); padding: 12px; margin-top: 8px;">
+          <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--secondary); margin-bottom: 4px;">
+            Select Expiration Date & Time:
+          </label>
+          <input type="datetime-local" id="customExpiresAt" name="custom_expires_at" style="width: 100%;" onchange="updateLivePreview()">
+        </div>
+      </div>
+
+      <!-- Discount Type & Value -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+            Discount Type
+          </label>
+          <select id="promoTypeSelect" name="discount_type" onchange="updateLivePreview()">
+            <option value="percent">Percentage Discount (%)</option>
+            <option value="fixed">Fixed Dollar Amount ($)</option>
+          </select>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+            Discount Value <span style="color: var(--primary);">*</span>
+          </label>
+          <input type="number" id="promoValueInput" name="discount_value" step="0.01" min="0.01" value="20" required oninput="updateLivePreview()">
+        </div>
+      </div>
+
+      <!-- Min Spend & Max Discount -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+            Min. Order Spend ($)
+          </label>
+          <input type="number" id="promoMinSpend" name="min_spend" step="0.50" min="0" value="20.00" required>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+            Max Discount Cap ($)
+          </label>
+          <input type="number" id="promoMaxDiscount" name="max_discount" step="0.50" min="1" value="25.00" required>
+        </div>
+      </div>
+
+      <!-- Active Toggle Checkbox -->
+      <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+        <div>
+          <div style="font-size: 0.9rem; font-weight: 700; color: var(--secondary);">Activate Immediately</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">Start countdown clock as soon as published</div>
+        </div>
+        <label style="position: relative; display: inline-block; width: 46px; height: 24px; margin: 0; cursor: pointer;">
+          <input type="checkbox" name="is_active" value="1" checked style="opacity: 0; width: 0; height: 0; position: absolute;">
+          <span style="position: absolute; cursor: pointer; inset: 0; background-color: var(--success); border-radius: 24px; transition: .3s;">
+            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 24px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s;"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" onclick="closePromoModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="font-weight: 700; padding: 10px 24px;">
+          🚀 Publish Timed Promotion
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+let selectedDays = 7;
+let currentExtendDays = 3;
+
+window.selectDurationPill = function(days) {
+  selectedDays = days;
+  document.querySelectorAll('.duration-pill').forEach(el => {
+    el.classList.remove('selected');
+    el.style.borderColor = 'var(--border-color)';
+    el.style.background = '#FFF';
+    const firstDiv = el.querySelector('div:first-child');
+    if (firstDiv) firstDiv.style.color = 'var(--secondary)';
+  });
+
+  const selectedEl = document.getElementById('pill-' + days);
+  if (selectedEl) {
+    selectedEl.classList.add('selected');
+    selectedEl.style.borderColor = 'var(--primary)';
+    selectedEl.style.background = 'rgba(244, 81, 58, 0.08)';
+    const firstDiv = selectedEl.querySelector('div:first-child');
+    if (firstDiv) firstDiv.style.color = 'var(--primary)';
+    const radio = selectedEl.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+  }
+
+  const customCont = document.getElementById('customExpiryContainer');
+  if (days === 'custom') {
+    customCont.style.display = 'block';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('customExpiresAt').value = tomorrow.toISOString().slice(0, 16);
+  } else {
+    customCont.style.display = 'none';
+  }
+
+  updateLivePreview();
+};
+
+window.openPromoModal = function() {
+  const modal = document.getElementById('promoModal');
+  if (!modal) return;
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  if (!document.getElementById('promoCodeInput').value) {
+    generateRandomCode();
+  }
+};
+
+window.closePromoModal = function() {
+  const modal = document.getElementById('promoModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = 'auto';
+};
+
+window.openExtendModal = function(promoId, promoCode) {
+  const modal = document.getElementById('extendModal');
+  if (!modal) return;
+  document.getElementById('extendTargetPromoId').value = promoId;
+  document.getElementById('extendPromoForm').action = `/partner/promotions/${promoId}/extend`;
+  document.getElementById('extendModalSubtitle').textContent = `Extend countdown and reactivate campaign '${promoCode}'`;
+  selectExtendPill(3); // default +3 days
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeExtendModal = function() {
+  const modal = document.getElementById('extendModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  document.body.style.overflow = 'auto';
+};
+
+window.selectExtendPill = function(days) {
+  currentExtendDays = days;
+  document.getElementById('selectedExtendDays').value = days;
+  document.querySelectorAll('.extend-pill').forEach(el => {
+    el.style.borderColor = 'var(--border-color)';
+    el.style.background = '#FFF';
+    const strong = el.querySelector('strong');
+    if (strong) strong.style.color = 'var(--secondary)';
+    const span = el.querySelector('span');
+    if (span) span.style.color = 'var(--text-muted)';
+  });
+
+  const pill = document.getElementById(`ext-pill-${days}`);
+  if (pill) {
+    pill.style.borderColor = 'var(--primary)';
+    pill.style.background = 'rgba(244, 81, 58, 0.08)';
+    const strong = pill.querySelector('strong');
+    if (strong) strong.style.color = 'var(--primary)';
+    const span = pill.querySelector('span');
+    if (span) span.style.color = 'var(--primary)';
+  }
+};
+
+window.handleExtendSubmit = async function(e) {
+  e.preventDefault();
+  const promoId = document.getElementById('extendTargetPromoId').value;
+  const days = document.getElementById('selectedExtendDays').value || 3;
+  const btn = document.getElementById('extendSubmitBtn');
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Extending...';
+  }
+
+  try {
+    const res = await fetch(`/partner/promotions/${promoId}/extend`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ extend_days: parseInt(days) })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) {
+        window.showToast(data.message || 'Campaign extended and deal is LIVE!', 'success');
+      }
+      closeExtendModal();
+      
+      // Update card attributes dynamically
+      const card = document.getElementById(`promo-card-${promoId}`);
+      if (card && data.new_expires_at) {
+        card.setAttribute('data-expires-at', data.new_expires_at);
+        card.setAttribute('data-is-active', '1');
+        card.classList.remove('is-expired');
+        card.style.opacity = '1';
+        card.style.background = '#FFF';
+        const expLabel = document.getElementById(`expiry-date-label-${promoId}`);
+        if (expLabel) expLabel.textContent = data.new_expires_at.slice(0, 16);
+        const statusTag = document.getElementById(`status-tag-${promoId}`);
+        if (statusTag) {
+          statusTag.className = 'tag tag-success';
+          statusTag.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:#16A34A;"></span> Live on Store';
+        }
+      } else {
+        setTimeout(() => window.location.reload(), 400);
+      }
+    } else {
+      if (window.showToast) window.showToast(data.message || 'Could not extend campaign', 'error');
+    }
+  } catch (err) {
+    console.error('Extend error:', err);
+    // Fallback to standard form submission
+    document.getElementById('extendPromoForm').submit();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🚀 Extend & Go Live';
+    }
+  }
+};
+
+window.generateRandomCode = function() {
+  const prefixes = ['CRAVE', 'TASTY', 'FEAST', 'DELISH', 'SUPER', 'CHEF', 'LUNCH', 'NIGHT', 'FLASH'];
+  const numbers = ['15', '20', '25', '30', '50'];
+  const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
+  const generated = randomPrefix + randomNumber;
+  
+  document.getElementById('promoCodeInput').value = generated;
+  if (!document.getElementById('promoDescInput').value) {
+    document.getElementById('promoDescInput').value = `${randomNumber}% off your next CraveCart order!`;
+  }
+  updateLivePreview();
+};
+
+window.applyPreset = function(code, desc, type, val, minSpend, maxDisc, duration) {
+  document.getElementById('promoCodeInput').value = code;
+  document.getElementById('promoDescInput').value = desc;
+  document.getElementById('promoTypeSelect').value = type;
+  document.getElementById('promoValueInput').value = val;
+  document.getElementById('promoMinSpend').value = minSpend;
+  document.getElementById('promoMaxDiscount').value = maxDisc;
+  selectDurationPill(duration);
+  updateLivePreview();
+};
+
+window.updateLivePreview = function() {
+  const code = document.getElementById('promoCodeInput').value.trim().toUpperCase() || 'PROMOCODE';
+  const desc = document.getElementById('promoDescInput').value.trim() || 'Discount on delicious food';
+  const type = document.getElementById('promoTypeSelect').value;
+  const val = parseFloat(document.getElementById('promoValueInput').value) || 0;
+
+  document.getElementById('previewCode').textContent = code;
+  document.getElementById('previewDesc').textContent = desc;
+  
+  const badge = document.getElementById('previewBadge');
+  if (type === 'percent') {
+    badge.textContent = `${Math.round(val)}% OFF`;
+  } else {
+    badge.textContent = `$${val.toFixed(2)} OFF`;
+  }
+
+  const durationLabel = document.getElementById('previewDurationLabel');
+  if (selectedDays === 'custom') {
+    const customVal = document.getElementById('customExpiresAt').value;
+    durationLabel.textContent = `Custom Expiry: ${customVal ? customVal.replace('T', ' ') : 'Select Date'}`;
+  } else {
+    durationLabel.textContent = `Live Countdown: ${selectedDays} Days duration set by owner`;
+  }
+};
+
+window.copyPromoCode = function(code, btn) {
+  navigator.clipboard.writeText(code).then(() => {
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.style.color = 'var(--success)';
+    if (window.showToast) {
+      window.showToast(`Promo code ${code} copied to clipboard!`, 'success');
+    }
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.style.color = 'var(--secondary)';
+    }, 2000);
+  });
+};
+
+// =========================================================
+// REAL-TIME COUNTDOWN RUNNER & AUTO-EXPIRATION ENGINE
+// =========================================================
+function initCountdownTimers() {
+  const promoCards = document.querySelectorAll('.promo-card');
+
+  function updateTimers() {
+    const now = new Date().getTime();
+
+    promoCards.forEach(card => {
+      const promoId = card.getAttribute('data-promo-id');
+      const expiresAtStr = card.getAttribute('data-expires-at');
+      const isActive = card.getAttribute('data-is-active') === '1';
+      const countdownText = document.getElementById(`countdown-text-${promoId}`);
+      const clockIcon = document.getElementById(`clock-icon-${promoId}`);
+      const countdownBox = document.getElementById(`countdown-box-${promoId}`);
+      const statusTag = document.getElementById(`status-tag-${promoId}`);
+
+      if (!countdownText) return;
+
+      if (!expiresAtStr) {
+        countdownText.textContent = 'Ongoing (No Expiry)';
+        return;
+      }
+
+      // Parse SQLite datetime 'YYYY-MM-DD HH:MM:SS'
+      const expiryDate = new Date(expiresAtStr.replace(' ', 'T')).getTime();
+      const distance = expiryDate - now;
+
+      if (distance <= 0 || !isActive) {
+        // SALE HAS REACHED ZERO / EXPIRED
+        if (distance <= 0) {
+          countdownText.textContent = '00d 00h 00m 00s (Sale Ended)';
+          countdownText.style.color = '#DC2626';
+          if (clockIcon) clockIcon.textContent = '⌛';
+          if (countdownBox) {
+            countdownBox.style.background = '#FEE2E2';
+            countdownBox.style.borderColor = '#FCA5A5';
+            countdownBox.classList.remove('pulse-urgent');
+          }
+          if (statusTag && isActive) {
+            statusTag.className = 'tag';
+            statusTag.style.background = '#FEE2E2';
+            statusTag.style.color = '#DC2626';
+            statusTag.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:#DC2626;"></span> Expired';
+            card.style.opacity = '0.78';
+            card.style.background = '#FAFAFA';
+            card.setAttribute('data-is-active', '0');
+            // Notify server webhook of expiration
+            fetch(`/api/promotions/${promoId}/expire`, { credentials: 'same-origin', method: 'POST' }).catch(() => {});
+          }
+        } else {
+          // Paused by owner
+          countdownText.textContent = 'Paused by Owner';
+          countdownText.style.color = '#64748B';
+          if (clockIcon) clockIcon.textContent = '⏸️';
+        }
+      } else {
+        // ACTIVE RUNNING COUNTDOWN
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const formatted = `${days > 0 ? days + 'd ' : ''}${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+
+        countdownText.textContent = formatted;
+
+        // Visual Urgency: If less than 24 hours remaining, make it punchy and pulse
+        if (distance < 24 * 60 * 60 * 1000) {
+          countdownText.style.color = '#EA580C';
+          if (clockIcon) clockIcon.textContent = '🔥';
+          if (countdownBox) {
+            countdownBox.style.background = 'rgba(234, 88, 12, 0.08)';
+            countdownBox.style.borderColor = '#FDBA74';
+            countdownBox.classList.add('pulse-urgent');
+          }
+        } else {
+          countdownText.style.color = 'var(--secondary)';
+          if (clockIcon) clockIcon.textContent = '⏳';
+          if (countdownBox) {
+            countdownBox.style.background = 'rgba(244, 81, 58, 0.06)';
+            countdownBox.style.borderColor = 'rgba(244, 81, 58, 0.25)';
+            countdownBox.classList.remove('pulse-urgent');
+          }
+        }
+      }
+    });
+  }
+
+  updateTimers();
+  setInterval(updateTimers, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCountdownTimers();
+});
+
+// Close modals on backdrop click
+document.getElementById('promoModal').addEventListener('click', function(e) {
+  if (e.target === this) closePromoModal();
+});
+document.getElementById('extendModal').addEventListener('click', function(e) {
+  if (e.target === this) closeExtendModal();
+});
+</script>
+{% endblock %}

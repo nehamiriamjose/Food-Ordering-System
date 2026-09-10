@@ -1,0 +1,161 @@
+{% extends 'courier/base_courier.html' %}
+
+{% block title %}Courier Dashboard | CraveCart{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+      Good afternoon, {{ courier.name if courier else (g.user.name if g.user else 'Courier Driver') }} 🛵
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.92rem;">
+      Shift Status: <span style="color: var(--success); font-weight: 700;">● Active in Downtown NYC zone</span>
+    </p>
+  </div>
+
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 8px 16px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-xs);">
+    {% if active_deliveries %}
+      <span style="font-size: 1.1rem;">🛵</span>
+      <div>
+        <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Current Workload</div>
+        <div style="font-size: 0.85rem; font-weight: 800; color: #D97706;">Out on Delivery ({{ active_deliveries|length }})</div>
+      </div>
+    {% else %}
+      <span style="font-size: 1.1rem;">🟢</span>
+      <div>
+        <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Current Workload</div>
+        <div style="font-size: 0.85rem; font-weight: 800; color: var(--success);">Active & Available (Free)</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Shift Metrics -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Today's Earnings</span>
+      <span class="stat-value" style="color: var(--success);">${{ "%.2f"|format(today_earnings) }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="background: var(--success-light); color: var(--success);">💵</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Active Missions</span>
+      <span class="stat-value">{{ active_deliveries|length }}</span>
+    </div>
+    <div class="stat-icon-wrap">📦</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Courier Rating</span>
+      {% if courier and courier.total_trips and courier.total_trips > 0 and courier.rating %}
+        <span class="stat-value">{{ "%.1f"|format(courier.rating) }} ⭐</span>
+      {% else %}
+        <span class="stat-value" style="font-size: 1.35rem; color: var(--primary);">New ✨</span>
+      {% endif %}
+    </div>
+    <div class="stat-icon-wrap" style="background: #FEF3C7; color: #D97706;">🏆</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Lifetime Trips</span>
+      <span class="stat-value">{{ courier.total_trips or 0 }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="background: #E0F2FE; color: #0284C7;">🗺️</div>
+  </div>
+</div>
+
+<!-- Current Active Delivery Missions -->
+{% if active_deliveries %}
+<div style="margin-bottom: 36px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin: 0;">
+      Current Assigned Delivery Missions ({{ active_deliveries|length }})
+    </h2>
+    <span class="tag tag-primary" style="font-weight: 800;">🔔 Active Dispatch</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    {% for deliv in active_deliveries %}
+    <div style="background: #FFF; border: 2px solid var(--primary); border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+          <span class="tag tag-primary" style="font-weight: 800;">{{ deliv.status|replace('_', ' ')|capitalize }}</span>
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">Order #{{ deliv.order_number }}</h3>
+        </div>
+        <div style="font-size: 0.95rem; color: var(--secondary); font-weight: 700; margin-bottom: 4px;">
+          🍳 Pickup: <strong>{{ deliv.restaurant_name }}</strong> ({{ deliv.restaurant_address }})
+        </div>
+        <div style="font-size: 0.88rem; color: var(--text-muted);">
+          Payout: <strong style="color: var(--success);">${{ "%.2f"|format(deliv.delivery_fee + deliv.tip) }}</strong> (incl. ${{ "%.2f"|format(deliv.tip) }} customer tip)
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        {% if deliv.status in ('placed', 'confirmed', 'preparing', 'ready') %}
+          <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="picked_up" style="font-weight: 800; padding: 10px 18px;">
+            📦 Accept & Pick Up Food
+          </button>
+        {% elif deliv.status == 'picked_up' %}
+          <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="on_the_way" style="font-weight: 800; padding: 10px 18px;">
+            🛵 Depart Towards Customer
+          </button>
+        {% elif deliv.status == 'on_the_way' %}
+          <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="delivered" style="background: var(--success); font-weight: 800; padding: 10px 20px;">
+            🎉 Mark Order Delivered
+          </button>
+        {% endif %}
+
+        <a href="{{ url_for('courier_delivery_detail', order_number=deliv.order_number) }}" class="btn btn-outline btn-md" style="font-weight: 700;">
+          Open Live Map & Details →
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Recent Deliveries Table -->
+<div class="data-table-card">
+  <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+    <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin: 0;">Recent Completed Deliveries</h3>
+    <a href="{{ url_for('courier_earnings') }}" class="btn btn-outline btn-xs" style="font-weight: 700;">View Earnings Report →</a>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Order Number</th>
+        <th>Restaurant</th>
+        <th>Payout</th>
+        <th>Tip</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if past_deliveries %}
+        {% for d in past_deliveries %}
+        <tr>
+          <td style="font-weight: 800; color: var(--primary);">#{{ d.order_number }}</td>
+          <td>{{ d.restaurant_name }}</td>
+          <td style="font-weight: 800; color: var(--success);">${{ "%.2f"|format(d.delivery_fee + d.tip) }}</td>
+          <td>${{ "%.2f"|format(d.tip) }}</td>
+          <td><span class="tag tag-success">Delivered</span></td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted);">
+            No completed deliveries yet. Accept assigned missions to start earning!
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

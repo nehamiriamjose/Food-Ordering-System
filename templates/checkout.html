@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px;">
+  <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 28px;">
+    Checkout & Payment
+  </h1>
+
+  <div class="checkout-layout">
+    <!-- Left Column: Checkout Stepper Sections -->
+    <div>
+      <!-- Step 1: Delivery Address -->
+      <div class="checkout-step-card">
+        <div class="checkout-step-header">
+          <div class="step-num-badge">1</div>
+          <h2 class="step-title">Delivery Address</h2>
+        </div>
+
+        <div class="saved-addresses-grid">
+          {% for addr in addresses %}
+          <div class="address-select-card {% if addr.is_default or loop.first %}selected{% endif %}" 
+               data-label="{{ addr.label }}" 
+               data-street="{{ addr.street }}" 
+               data-apt="{{ addr.apartment }}" 
+               data-city="{{ addr.city }}" 
+               data-zip="{{ addr.zip_code }}">
+            <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary); margin-bottom: 4px;">
+              📍 {{ addr.label }} {% if addr.is_default %}<span class="tag tag-primary" style="font-size: 0.7rem;">Default</span>{% endif %}
+            </div>
+            <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4;">
+              {{ addr.street }}{% if addr.apartment %}, {{ addr.apartment }}{% endif %}<br>
+              {{ addr.city }}, {{ addr.state }} {{ addr.zip_code }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px; color: var(--text-muted);">
+            Delivery Drop-off Instructions
+          </label>
+          <input type="text" id="delivery-instructions-input" class="promo-input-box" style="width: 100%; border-radius: var(--radius-md);" value="Ring bell #4B, leave on delivery bench by door" placeholder="e.g. Leave at door, buzz #4B...">
+        </div>
+      </div>
+
+      <!-- Step 2: Delivery Timing -->
+      <div class="checkout-step-card">
+        <div class="checkout-step-header">
+          <div class="step-num-badge">2</div>
+          <h2 class="step-title">Delivery Timing</h2>
+        </div>
+
+        <div style="display: flex; gap: 14px;">
+          <label style="flex: 1; border: 2px solid var(--primary); background: var(--primary-light); border-radius: var(--radius-md); padding: 14px; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+            <input type="radio" name="timing_option" checked>
+            <div>
+              <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary);">⚡ Priority ASAP</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Estimated arrival in {{ restaurant.delivery_time_min }}–{{ restaurant.delivery_time_max }} mins</div>
+            </div>
+          </label>
+
+          <label style="flex: 1; border: 1.5px solid var(--border-color); background: #FFF; border-radius: var(--radius-md); padding: 14px; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+            <input type="radio" name="timing_option">
+            <div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--secondary);">📅 Schedule Later</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Pick date & time slot</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 3: Courier Tip -->
+      <div class="checkout-step-card">
+        <div class="checkout-step-header">
+          <div class="step-num-badge">3</div>
+          <h2 class="step-title">Support Your Courier</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+          100% of your tip goes directly to Marcus Vance who will be delivering your meal on motorcycle.
+        </p>
+
+        <div class="tip-options-row">
+          <button type="button" class="tip-btn" data-tip="2.00">$2.00</button>
+          <button type="button" class="tip-btn active" data-tip="3.00">$3.00 (Standard)</button>
+          <button type="button" class="tip-btn" data-tip="5.00">$5.00 (Generous)</button>
+          <button type="button" class="tip-btn" data-tip="0.00">No Tip</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Realistic Payment Gateway -->
+      <div class="checkout-step-card">
+        <div class="checkout-step-header" style="justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="step-num-badge">4</div>
+            <h2 class="step-title">Payment Method</h2>
+          </div>
+          <span style="font-size: 0.78rem; font-weight: 700; color: var(--success); display: flex; align-items: center; gap: 4px;">
+            🔒 256-Bit SSL Encrypted
+          </span>
+        </div>
+
+        <!-- Payment Navigation Tabs -->
+        <div class="payment-tabs-nav" id="payment-tabs-nav">
+          <button type="button" class="payment-tab-btn active" data-tab="tab-card">
+            <span style="font-size: 1.2rem;">💳</span>
+            <span>Debit / Card</span>
+          </button>
+          <button type="button" class="payment-tab-btn" data-tab="tab-upi">
+            <span style="font-size: 1.2rem;">📱</span>
+            <span>UPI / QR</span>
+          </button>
+          <button type="button" class="payment-tab-btn" data-tab="tab-netbanking">
+            <span style="font-size: 1.2rem;">🏦</span>
+            <span>Net Banking</span>
+          </button>
+          <button type="button" class="payment-tab-btn" data-tab="tab-cod">
+            <span style="font-size: 1.2rem;">💵</span>
+            <span>Cash on Deliv</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: CARD PAYMENT WITH 3D LIVE PREVIEW -->
+        <div class="payment-tab-content active" id="tab-card">
+          <!-- 3D Interactive Card Preview -->
+          <div class="card-preview-wrapper">
+            <div class="card-preview-inner" id="card-preview-visual">
+              <div class="card-chip-row">
+                <div class="card-emv-chip"></div>
+                <div class="card-brand-display" id="card-preview-brand">VISA</div>
+              </div>
+              <div class="card-number-display" id="card-preview-number">•••• •••• •••• 4242</div>
+              <div class="card-meta-row">
+                <div>
+                  <div class="card-holder-label">Cardholder</div>
+                  <div class="card-holder-val" id="card-preview-name">{{ current_user.name if current_user else 'Alex Rivera' }}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="card-expiry-label">Expires</div>
+                  <div class="card-expiry-val" id="card-preview-expiry">12/28</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Saved Cards Quick Select -->
+          {% set card_pms = payment_methods|selectattr('type', 'equalto', 'card')|list %}
+          {% if card_pms %}
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-weight: 700; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px;">
+              Saved Cards on File:
+            </label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              {% for pm in card_pms %}
+              <div class="address-select-card saved-card-choice {% if loop.first %}selected{% endif %}" 
+                   data-brand="{{ pm.card_brand }}" 
+                   data-last4="{{ pm.last4 }}" 
+                   data-exp="{{ pm.exp_month }}/{{ pm.exp_year }}"
+                   style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.3rem;">💳</span>
+                  <div>
+                    <span style="font-weight: 800; font-size: 0.9rem;">{{ pm.card_brand }} ending in {{ pm.last4 }}</span>
+                    <span style="font-size: 0.78rem; color: var(--text-muted); margin-left: 8px;">Exp: {{ pm.exp_month }}/{{ pm.exp_year }}</span>
+                  </div>
+                </div>
+                <span class="tag tag-primary" style="font-size: 0.7rem;">Selected</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Or Enter Custom Card Details -->
+          <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 16px;">
+            <div style="font-weight: 800; font-size: 0.88rem; color: var(--secondary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+              <span>Or Enter New Card Details</span>
+              <button type="button" id="autofill-demo-card-btn" class="btn btn-outline btn-sm" style="padding: 2px 10px; font-size: 0.75rem;">
+                ⚡ Auto-fill Test Card
+              </button>
+            </div>
+
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px;">Card Number</label>
+              <input type="text" id="input-card-number" class="promo-input-box" style="width: 100%; background: #FFF;" placeholder="4532 •••• •••• 8899" maxlength="19">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <div style="grid-column: span 1;">
+                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px;">Expires (MM/YY)</label>
+                <input type="text" id="input-card-expiry" class="promo-input-box" style="width: 100%; background: #FFF;" placeholder="MM/YY" maxlength="5">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px;">CVV / CVC</label>
+                <input type="password" id="input-card-cvv" class="promo-input-box" style="width: 100%; background: #FFF;" placeholder="•••" maxlength="4">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px;">Cardholder Name</label>
+                <input type="text" id="input-card-name" class="promo-input-box" style="width: 100%; background: #FFF;" placeholder="e.g. Alex Rivera">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: UPI & QR CODE PAYMENT -->
+        <div class="payment-tab-content" id="tab-upi">
+          <!-- UPI Method Toggle: Apps vs UPI ID vs QR -->
+          <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+            <button type="button" class="btn btn-outline btn-sm upi-subtab-btn active" data-subtab="upi-apps" style="flex: 1;">
+              ⚡ UPI Apps
+            </button>
+            <button type="button" class="btn btn-outline btn-sm upi-subtab-btn" data-subtab="upi-id" style="flex: 1;">
+              ✍️ Enter UPI ID
+            </button>
+            <button type="button" class="btn btn-outline btn-sm upi-subtab-btn" data-subtab="upi-qr" style="flex: 1;">
+              📷 Scan QR Code
+            </button>
+          </div>
+
+          <!-- Subtab 1: UPI Popular Apps Grid -->
+          <div id="subtab-upi-apps">
+            <div class="upi-apps-grid">
+              <div class="upi-app-card selected" data-app="Google Pay" data-vpa="alex@oksbi">
+                <div class="upi-app-icon" style="background: #E8F0FE; color: #1A73E8;">G</div>
+                <div class="upi-app-name">Google Pay</div>
+              </div>
+              <div class="upi-app-card" data-app="PhonePe" data-vpa="alex@ybl">
+                <div class="upi-app-icon" style="background: #F3E8FF; color: #5F259F;">Pe</div>
+                <div class="upi-app-name">PhonePe</div>
+              </div>
+              <div class="upi-app-card" data-app="Paytm" data-vpa="alex@paytm">
+                <div class="upi-app-icon" style="background: #E0F2FE; color: #00BAF2;">Pay</div>
+                <div class="upi-app-name">Paytm</div>
+              </div>
+              <div class="upi-app-card" data-app="CRED" data-vpa="alex@cred">
+                <div class="upi-app-icon" style="background: #1F2937; color: #FFF;">CR</div>
+                <div class="upi-app-name">CRED UPI</div>
+              </div>
+              <div class="upi-app-card" data-app="BHIM" data-vpa="alex@upi">
+                <div class="upi-app-icon" style="background: #FEF3C7; color: #D97706;">BH</div>
+                <div class="upi-app-name">BHIM UPI</div>
+              </div>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+              Selected: <strong id="selected-upi-app-label" style="color: var(--secondary);">Google Pay (alex@oksbi)</strong> • Will trigger instant simulated approval
+            </div>
+          </div>
+
+          <!-- Subtab 2: Custom UPI ID Input with live verification -->
+          <div id="subtab-upi-id" style="display: none;">
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 6px;">Enter Your Virtual Payment Address (VPA)</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="input-custom-upi-id" class="promo-input-box" placeholder="e.g. alex@okaxis or 9876543210@paytm" value="alex@okaxis" style="flex: 1;">
+                <button type="button" id="verify-upi-btn" class="btn btn-secondary btn-sm" style="padding: 0 16px;">
+                  Verify
+                </button>
+              </div>
+            </div>
+            <div id="upi-verify-status" style="font-size: 0.85rem; color: var(--success); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              ✓ Verified: Alex Rivera (Axis Bank UPI)
+            </div>
+          </div>
+
+          <!-- Subtab 3: Dynamic QR Code Scanner -->
+          <div id="subtab-upi-qr" style="display: none;">
+            <div class="qr-scanner-card">
+              <div class="qr-scan-line"></div>
+              <div class="qr-code-img-wrap">
+                <!-- High Quality SVG QR Code Simulation -->
+                <svg viewBox="0 0 120 120" style="width: 100%; height: 100%; display: block;">
+                  <rect width="120" height="120" fill="#FFF"/>
+                  <!-- Position markers -->
+                  <rect x="10" y="10" width="30" height="30" fill="#1E293B"/>
+                  <rect x="15" y="15" width="20" height="20" fill="#FFF"/>
+                  <rect x="20" y="20" width="10" height="10" fill="#1E293B"/>
+                  
+                  <rect x="80" y="10" width="30" height="30" fill="#1E293B"/>
+                  <rect x="85" y="15" width="20" height="20" fill="#FFF"/>
+                  <rect x="90" y="20" width="10" height="10" fill="#1E293B"/>
+
+                  <rect x="10" y="80" width="30" height="30" fill="#1E293B"/>
+                  <rect x="15" y="85" width="20" height="20" fill="#FFF"/>
+                  <rect x="20" y="90" width="10" height="10" fill="#1E293B"/>
+                  
+                  <!-- Matrix pattern -->
+                  <rect x="45" y="15" width="25" height="10" fill="#1E293B"/>
+                  <rect x="50" y="30" width="15" height="15" fill="#1E293B"/>
+                  <rect x="15" y="50" width="20" height="15" fill="#1E293B"/>
+                  <rect x="45" y="50" width="30" height="25" fill="#F4513A"/>
+                  <rect x="85" y="50" width="25" height="20" fill="#1E293B"/>
+                  <rect x="45" y="85" width="20" height="25" fill="#1E293B"/>
+                  <rect x="75" y="80" width="35" height="30" fill="#1E293B"/>
+                </svg>
+              </div>
+              <div style="font-weight: 800; font-size: 1rem; color: var(--secondary);">
+                Scan to Pay with Any UPI App
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                Open GPay, PhonePe, Paytm or Banking app to scan
+              </div>
+              <div style="margin-top: 10px; font-weight: 700; font-size: 0.85rem; color: var(--warning);">
+                ⏱️ QR Code valid for <span id="qr-countdown">04:58</span> mins
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: NET BANKING -->
+        <div class="payment-tab-content" id="tab-netbanking">
+          <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 10px;">Select Bank</label>
+          <div class="bank-grid">
+            <div class="bank-option-card selected" data-bank="HDFC Bank">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">HDFC Bank</span>
+            </div>
+            <div class="bank-option-card" data-bank="ICICI Bank">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">ICICI Bank</span>
+            </div>
+            <div class="bank-option-card" data-bank="State Bank of India">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">SBI</span>
+            </div>
+            <div class="bank-option-card" data-bank="Axis Bank">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">Axis Bank</span>
+            </div>
+            <div class="bank-option-card" data-bank="Chase">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">Chase Bank</span>
+            </div>
+            <div class="bank-option-card" data-bank="Citi Bank">
+              <span style="font-size: 1.2rem;">🏦</span>
+              <span style="font-weight: 700; font-size: 0.85rem;">Citibank</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: CASH ON DELIVERY -->
+        <div class="payment-tab-content" id="tab-cod">
+          <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 18px; display: flex; align-items: flex-start; gap: 14px;">
+            <span style="font-size: 2rem;">💵</span>
+            <div>
+              <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary); margin-bottom: 4px;">Cash on Delivery</div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45;">
+                You can pay in cash to courier Marcus upon arrival at your doorstep. Please keep exact change ready to ensure a swift, contactless drop-off.
+              </p>
+              <div class="tag tag-success" style="margin-top: 10px;">✓ Verified Zero Cash Surcharge</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Final Order Summary & Place Order -->
+    <div>
+      <div class="cart-summary-card" style="position: sticky; top: calc(var(--header-height) + 20px);">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px;">
+          {{ restaurant.name }}
+        </h3>
+
+        <!-- Items Summary List -->
+        <div style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color);">
+          {% for item in cart_items %}
+          <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 700;">{{ item.quantity }}x</span> {{ item.item_name }}
+            </div>
+            <span style="font-weight: 700;">${{ "%.2f"|format(item.item_total) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Breakdown Details -->
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.92rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Subtotal</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(subtotal) }}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Delivery Fee</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(delivery_fee) }}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Taxes & Service Fees</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(tax + service_fee) }}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Courier Tip</span>
+            <span style="font-weight: 700;" id="checkout-tip-display">$3.00</span>
+          </div>
+
+          {% if discount > 0 %}
+          <div style="display: flex; justify-content: space-between; color: var(--success); font-weight: 700;">
+            <span>Promo Discount ({{ applied_promo }})</span>
+            <span>-${{ "%.2f"|format(discount) }}</span>
+          </div>
+          {% endif %}
+
+          <div style="display: flex; justify-content: space-between; font-size: 1.35rem; font-weight: 800; color: var(--secondary); margin-top: 10px; padding-top: 12px; border-top: 2px solid var(--border-color);">
+            <span>Total to Pay</span>
+            <span id="checkout-total-display" data-base-total="{{ total }}">${{ "%.2f"|format(total + 3.00) }}</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg" id="place-order-btn" style="margin-top: 24px;">
+          Place Order • Pay Securely
+        </button>
+
+        <div style="text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 12px;">
+          🔒 256-Bit SSL Encrypted & Protected Demo Payment
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REALISTIC BANK 3D-SECURE & UPI GATEWAY MODAL SIMULATOR -->
+  <div class="gateway-modal-backdrop" id="gateway-modal">
+    <div class="gateway-modal-card">
+      <div class="gateway-modal-header">
+        <div class="gateway-brand">
+          <span style="font-size: 1.4rem;">🏛️</span>
+          <span id="gateway-bank-title">CravePay Secure Gateway</span>
+        </div>
+        <div class="gateway-security-badge">
+          <span>🔒 Verified by Visa / NPCI</span>
+        </div>
+      </div>
+
+      <div class="gateway-modal-body">
+        <!-- PHASE 1: CONNECTING / INITIALIZING -->
+        <div id="gateway-phase-init">
+          <div class="gateway-spinner"></div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin-bottom: 6px;">
+            Connecting to Secure Bank Server...
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            Establishing 256-bit encrypted handshake with your payment provider
+          </p>
+        </div>
+
+        <!-- PHASE 2A: CARD OTP 3D-SECURE SCREEN -->
+        <div id="gateway-phase-otp" style="display: none;">
+          <div style="font-size: 1.8rem; margin-bottom: 8px;">📲</div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+            Two-Factor Authentication (OTP)
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+            A one-time passcode has been sent to your registered mobile ending in <strong>•••• 5678</strong>
+          </p>
+
+          <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 10px 14px; margin: 16px 0 12px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Demo Passcode:</span>
+            <span style="font-weight: 800; font-size: 0.95rem; color: var(--primary); letter-spacing: 2px;">849201</span>
+            <button type="button" id="autofill-otp-btn" class="btn btn-outline btn-sm" style="padding: 2px 8px; font-size: 0.72rem;">
+              Auto-Fill
+            </button>
+          </div>
+
+          <div class="otp-inputs-row">
+            <input type="text" class="otp-box" maxlength="1" data-idx="0" autofocus>
+            <input type="text" class="otp-box" maxlength="1" data-idx="1">
+            <input type="text" class="otp-box" maxlength="1" data-idx="2">
+            <input type="text" class="otp-box" maxlength="1" data-idx="3">
+            <input type="text" class="otp-box" maxlength="1" data-idx="4">
+            <input type="text" class="otp-box" maxlength="1" data-idx="5">
+          </div>
+
+          <button type="button" class="btn btn-primary btn-block btn-lg" id="submit-otp-btn" style="margin-bottom: 12px;">
+            Authorize Payment of <span class="gateway-amount-display">$0.00</span>
+          </button>
+
+          <div style="font-size: 0.8rem; color: var(--text-muted);">
+            Resend OTP in <span id="otp-timer-count" style="font-weight: 700; color: var(--secondary);">0:28</span>s
+          </div>
+        </div>
+
+        <!-- PHASE 2B: UPI APP APPROVAL SCREEN -->
+        <div id="gateway-phase-upi" style="display: none;">
+          <div style="font-size: 2.2rem; margin-bottom: 8px;">📲</div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+            Approve on UPI App
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Payment request of <strong class="gateway-amount-display" style="color: var(--secondary);">$0.00</strong> sent to <strong id="gateway-upi-handle">alex@okaxis</strong>
+          </p>
+
+          <div class="gateway-spinner" style="width: 44px; height: 44px;"></div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 18px;">
+            Waiting for PIN approval on your phone...
+          </div>
+
+          <button type="button" class="btn btn-primary btn-block" id="simulate-upi-approve-btn">
+            ⚡ Simulate "Approve in UPI App"
+          </button>
+        </div>
+
+        <!-- PHASE 3: VERIFICATION SUCCESS -->
+        <div id="gateway-phase-success" style="display: none;">
+          <div class="gateway-success-check">✓</div>
+          <h3 style="font-size: 1.3rem; font-weight: 800; color: #065F46; margin-bottom: 6px;">
+            Payment Authorized!
+          </h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">
+            Transaction ID: <span id="gateway-tx-id" style="font-family: monospace; font-weight: 700; color: var(--secondary);">TXN-98421094</span>
+          </p>
+          <div class="tag tag-success" style="font-size: 0.82rem; padding: 6px 14px;">
+            ✨ +<span id="gateway-earned-points">350</span> CravePoints Earned!
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 14px;">
+            Redirecting to live order tracking...
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/checkout.js') }}"></script>
+{% endblock %}

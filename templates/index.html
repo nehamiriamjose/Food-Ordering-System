@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+
+{% block title %}CraveCart | Good food, right when you want it.{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section style="background: linear-gradient(135deg, #FFF0ED 0%, #FFF9F4 60%, #FEF3D6 100%); padding: 48px 0 60px; border-bottom: 1px solid var(--border-color); margin-bottom: 40px; position: relative; overflow: hidden;">
+  <div class="container" style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center;">
+    <div>
+      <div class="tag tag-primary" style="margin-bottom: 16px; font-size: 0.85rem; padding: 6px 14px;">
+        🚀 Free delivery on your first 3 orders with code <strong>WELCOME50</strong>
+      </div>
+      <h1 style="font-size: 2.8rem; font-weight: 800; color: var(--secondary); line-height: 1.15; letter-spacing: -1px; margin-bottom: 18px;">
+        Your next favorite meal is a few taps away.
+      </h1>
+      <p style="font-size: 1.1rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 28px; max-width: 520px;">
+        Discover top local restaurants, wood-fired artisan pizzas, healthy organic grain bowls, and handcrafted desserts delivered fresh and fast.
+      </p>
+
+      <!-- Hero Search & Action Form -->
+      <form action="{{ url_for('restaurants_list') }}" method="GET" style="display: flex; gap: 10px; background: #FFF; padding: 8px; border-radius: var(--radius-full); box-shadow: var(--shadow-md); border: 1.5px solid var(--border-color); max-width: 540px;">
+        <div style="display: flex; align-items: center; gap: 8px; padding-left: 14px; flex: 1;">
+          <span style="font-size: 1.2rem; color: var(--primary);">📍</span>
+          <input type="text" name="q" placeholder="Enter your address or craving..." style="width: 100%; font-size: 0.95rem; font-weight: 500;" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 12px 28px; font-size: 1rem;">
+          Find Food
+        </button>
+      </form>
+
+      <!-- Hero Quick Stats -->
+      <div style="display: flex; gap: 24px; margin-top: 32px; font-size: 0.88rem; color: var(--text-muted); font-weight: 700;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="color: var(--success); font-size: 1.1rem;">⚡</span> Average delivery: 25 mins
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="color: var(--warning); font-size: 1.1rem;">⭐</span> 4.8/5 Customer rating
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Image Showcase -->
+    <div style="position: relative;">
+      <div style="border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-xl); border: 4px solid #FFF; transform: rotate(1deg);">
+        <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80" alt="Delicious Feast" style="width: 100%; height: 380px; object-fit: cover;">
+      </div>
+
+      <!-- Floating Live Order Card -->
+      <div style="position: absolute; bottom: -20px; left: -20px; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(8px); padding: 14px 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 14px;">
+        <span style="font-size: 2rem;">🛵</span>
+        <div>
+          <div style="font-size: 0.78rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">Live Delivery</div>
+          <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary);">Ember & Crust on the way</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Estimated arrival in 12 mins</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+  <!-- Cuisines Carousel -->
+  <section style="margin-bottom: 48px;">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Explore by Cuisine</h2>
+        <p class="section-subtitle">What are you craving today?</p>
+      </div>
+      <a href="{{ url_for('restaurants_list') }}" class="view-all-link">Browse all →</a>
+    </div>
+
+    <div class="category-carousel">
+      {% for c in cuisines %}
+      <a href="{{ url_for('restaurants_list', cuisine=c.name) }}" class="category-card">
+        <div class="category-icon-box">{{ c.icon }}</div>
+        <span class="category-name">{{ c.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Popular Near You -->
+  <section style="margin-bottom: 54px;">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Popular Near You</h2>
+        <p class="section-subtitle">Most ordered restaurants in your neighborhood</p>
+      </div>
+      <a href="{{ url_for('restaurants_list', sort='reviews') }}" class="view-all-link">View all popular →</a>
+    </div>
+
+    <div class="restaurants-grid">
+      {% for rest in popular_near_you %}
+      <div class="restaurant-card">
+        <div class="card-image-wrap">
+          <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+          <button class="card-favorite-btn {% if rest.id in fav_rest_ids %}active{% endif %}" data-restaurant-id="{{ rest.id }}" title="Save restaurant">
+            {% if rest.id in fav_rest_ids %}❤️{% else %}🤍{% endif %}
+          </button>
+          {% if rest.is_featured %}
+          <div class="card-offer-badge">🔥 Top Pick</div>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <h3 class="restaurant-title">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+            </h3>
+            <div class="rating-badge">
+              {% if rest.review_count and rest.review_count > 0 and rest.rating %}
+                <span class="rating-star">★</span> {{ "%.1f"|format(rest.rating) }}
+              {% else %}
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary);">✨ New</span>
+              {% endif %}
+            </div>
+          </div>
+          <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.price_level }} • {{ rest.address.split(',')[1] if ',' in rest.address else rest.address }}</p>
+
+          <div class="card-meta-row">
+            <div class="meta-item">
+              <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+            </div>
+            <div class="meta-item">
+              <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }} delivery
+            </div>
+            <div class="meta-item" style="margin-left: auto;">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">Order Now</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Refreshing Drinks & Boba Showcase Section -->
+  <section style="margin-bottom: 54px;">
+    <div class="section-header">
+      <div>
+        <div class="tag tag-primary" style="margin-bottom: 6px;">🥤 THIRST QUENCHERS</div>
+        <h2 class="section-title">Refreshing Drinks & Artisan Boba</h2>
+        <p class="section-subtitle">Crafted with fresh botanicals, slow-brewed tea, and premium fruits</p>
+      </div>
+      <a href="{{ url_for('restaurants_list', cuisine='Drinks & Beverages') }}" class="view-all-link">View all drinks →</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+      <!-- Drink Item 1 -->
+      <div class="restaurant-card" style="display: flex; flex-direction: column;">
+        <div class="card-image-wrap" style="height: 180px;">
+          <img src="https://images.unsplash.com/photo-1558857563-b371b5636034?w=500&auto=format&fit=crop&q=80" alt="Brown Sugar Boba Milk" style="width: 100%; height: 100%; object-fit: cover;">
+          <div class="card-offer-badge">🧋 Bestseller</div>
+        </div>
+        <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--secondary);">Brown Sugar Boba Milk</h3>
+              <span style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">$6.25</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+              Slow-cooked warm brown sugar tapioca pearls with fresh organic milk and caramelized tiger drizzle.
+            </p>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">Seoul Bites</span>
+            <a href="/restaurants/4" class="btn btn-primary btn-sm">Customize & Add</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drink Item 2 -->
+      <div class="restaurant-card" style="display: flex; flex-direction: column;">
+        <div class="card-image-wrap" style="height: 180px;">
+          <img src="https://images.unsplash.com/photo-1546173159-315724a31696?w=500&auto=format&fit=crop&q=80" alt="Royal Saffron Mango Lassi" style="width: 100%; height: 100%; object-fit: cover;">
+          <div class="card-offer-badge" style="background: #D97706;">🥭 Traditional</div>
+        </div>
+        <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--secondary);">Royal Saffron Mango Lassi</h3>
+              <span style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">$5.50</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+              Thick creamy yogurt blended with Alphonso mango pulp, Kashmiri saffron, and crushed green cardamom.
+            </p>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">Tandoori House</span>
+            <a href="/restaurants/3" class="btn btn-primary btn-sm">Customize & Add</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drink Item 3 -->
+      <div class="restaurant-card" style="display: flex; flex-direction: column;">
+        <div class="card-image-wrap" style="height: 180px;">
+          <img src="https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=500&auto=format&fit=crop&q=80" alt="Sparkling Lemon Basil Spritz" style="width: 100%; height: 100%; object-fit: cover;">
+          <div class="card-offer-badge" style="background: #059669;">🌿 Refresher</div>
+        </div>
+        <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--secondary);">Lemon Basil Spritz</h3>
+              <span style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">$4.95</span>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+              Freshly squeezed Meyer lemon juice, sparkling mineral soda, muddled organic sweet basil, and raw agave.
+            </p>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted);">Ember & Crust</span>
+            <a href="/restaurants/1" class="btn btn-primary btn-sm">Customize & Add</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Special Promotional Banner -->
+  <section style="background: linear-gradient(135deg, var(--secondary) 0%, #111827 100%); color: #FFF; border-radius: var(--radius-xl); padding: 36px 40px; margin-bottom: 54px; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 30px; align-items: center;">
+    <div>
+      <div class="tag tag-warning" style="margin-bottom: 12px;">SPECIAL PROMO</div>
+      <h2 style="font-size: 2rem; font-weight: 800; line-height: 1.2; margin-bottom: 10px;">
+        Get 50% OFF your feast today!
+      </h2>
+      <p style="color: #CBD2D9; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px;">
+        Use code <strong style="color: var(--accent);">WELCOME50</strong> at checkout on orders over $20. Valid for new and returning members.
+      </p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary btn-lg apply-promo-quick-btn" data-code="WELCOME50">
+          ⚡ Apply 50% Discount
+        </button>
+        <button type="button" class="btn btn-outline" style="color: #FFF; border-color: rgba(255,255,255,0.3);" onclick="navigator.clipboard.writeText('WELCOME50'); window.showToast('Promo code WELCOME50 copied to clipboard!', 'success');">
+          📋 Copy Code
+        </button>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <img src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=80" alt="Delicious Mexican Tacos" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); max-height: 220px; width: 100%; object-fit: cover;">
+    </div>
+  </section>
+
+  <!-- Fast Delivery Section -->
+  <section style="margin-bottom: 54px;">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">⚡ Fast Delivery (Under 30 Mins)</h2>
+        <p class="section-subtitle">Hungry now? These kitchens deliver in record time</p>
+      </div>
+      <a href="{{ url_for('restaurants_list', sort='fastest') }}" class="view-all-link">View fastest →</a>
+    </div>
+
+    <div class="restaurants-grid">
+      {% for rest in fast_delivery %}
+      <div class="restaurant-card">
+        <div class="card-image-wrap">
+          <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+          <button class="card-favorite-btn {% if rest.id in fav_rest_ids %}active{% endif %}" data-restaurant-id="{{ rest.id }}" title="Save restaurant">
+            {% if rest.id in fav_rest_ids %}❤️{% else %}🤍{% endif %}
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <h3 class="restaurant-title">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+            </h3>
+            <div class="rating-badge">
+              {% if rest.review_count and rest.review_count > 0 and rest.rating %}
+                <span class="rating-star">★</span> {{ "%.1f"|format(rest.rating) }}
+              {% else %}
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary);">✨ New</span>
+              {% endif %}
+            </div>
+          </div>
+          <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.price_level }}</p>
+
+          <div class="card-meta-row">
+            <div class="meta-item">
+              <span style="color: var(--primary); font-weight: 800;">⚡ {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</span>
+            </div>
+            <div class="meta-item">
+              <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }}
+            </div>
+            <div class="meta-item" style="margin-left: auto;">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">Order</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Top-Rated Restaurants -->
+  <section style="margin-bottom: 54px;">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">⭐ Top-Rated Culinary Gems</h2>
+        <p class="section-subtitle">Consistently praised with 4.7+ stars and rave reviews</p>
+      </div>
+      <a href="{{ url_for('restaurants_list', sort='rating') }}" class="view-all-link">View highest rated →</a>
+    </div>
+
+    <div class="restaurants-grid">
+      {% for rest in top_rated %}
+      <div class="restaurant-card">
+        <div class="card-image-wrap">
+          <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+          <button class="card-favorite-btn {% if rest.id in fav_rest_ids %}active{% endif %}" data-restaurant-id="{{ rest.id }}" title="Save restaurant">
+            {% if rest.id in fav_rest_ids %}❤️{% else %}🤍{% endif %}
+          </button>
+          <div class="card-offer-badge" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
+            ⭐ {{ rest.rating }} ({{ rest.review_count }}+ reviews)
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <h3 class="restaurant-title">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+            </h3>
+          </div>
+          <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.description[:80] }}...</p>
+
+          <div class="card-meta-row">
+            <div class="meta-item">
+              <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+            </div>
+            <div class="meta-item">
+              <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }}
+            </div>
+            <div class="meta-item" style="margin-left: auto;">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">Order</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Why CraveCart Highlights -->
+  <section style="background: var(--bg-muted); border-radius: var(--radius-xl); padding: 48px 40px; margin-bottom: 40px; border: 1px solid var(--border-color);">
+    <div style="text-align: center; max-width: 600px; margin: 0 auto 36px;">
+      <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">Why Food Lovers Choose CraveCart</h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Uncompromising quality, lightning-quick delivery, and full kitchen transparency.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+      <div style="background: #FFF; padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🚀</div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Ultra-Fast Delivery</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">Smart routing algorithms ensure your meal arrives hot, crisp, and fresh from the oven.</p>
+      </div>
+
+      <div style="background: #FFF; padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">📍</div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Live GPS Tracking</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">Watch your order progress from prep to door with animated interactive live map updates.</p>
+      </div>
+
+      <div style="background: #FFF; padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🌿</div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">Curated Kitchens</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">Every restaurant partner is vetted for culinary craftsmanship, hygiene, and authentic flavors.</p>
+      </div>
+
+      <div style="background: #FFF; padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🛡️</div>
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 6px;">100% Satisfaction</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted);">Dedicated 24/7 support and instant resolution guarantee if anything is not picture perfect.</p>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

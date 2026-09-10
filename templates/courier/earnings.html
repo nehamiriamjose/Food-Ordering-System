@@ -1,0 +1,89 @@
+{% extends 'courier/base_courier.html' %}
+
+{% block title %}Courier Earnings & Payouts | CraveCart{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+        Earnings & Payouts
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Direct deposit linked to Chase Debit card •••• 1102
+      </p>
+    </div>
+
+    <button class="btn btn-primary btn-lg" onclick="simulateCashout({{ total_earnings }})">
+      ⚡ Instant Cash Out (${{ "%.2f"|format(total_earnings) }})
+    </button>
+  </div>
+
+  <!-- Earnings Cards -->
+  <div class="stats-grid" style="margin-bottom: 32px;">
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Total Payout This Week</span>
+        <span class="stat-value" style="color: var(--success);">${{ "%.2f"|format(total_earnings) }}</span>
+      </div>
+      <div class="stat-icon-wrap" style="background: var(--success-light); color: var(--success);">💵</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Base Trip Pay</span>
+        <span class="stat-value">${{ "%.2f"|format(base_pay) }}</span>
+      </div>
+      <div class="stat-icon-wrap" style="background: #E0F2FE; color: #0284C7;">🛵</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">100% Customer Tips</span>
+        <span class="stat-value">${{ "%.2f"|format(tips_pay) }}</span>
+      </div>
+      <div class="stat-icon-wrap" style="background: #FEF3C7; color: #D97706;">🎁</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Weekend Quest Bonus</span>
+        <span class="stat-value" style="color: var(--primary);">${{ "%.2f"|format(bonus_pay) }}</span>
+      </div>
+      <div class="stat-icon-wrap">🎯</div>
+    </div>
+  </div>
+
+  <!-- Trip History Table -->
+  <div class="data-table-card">
+    <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
+      <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">Trip Earnings Breakdown</h3>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Restaurant</th>
+          <th>Base Fare</th>
+          <th>Customer Tip</th>
+          <th>Total Earned</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in deliveries %}
+        <tr>
+          <td style="font-weight: 800;">#{{ d.order_number }}</td>
+          <td>{{ d.restaurant_name }}</td>
+          <td>${{ "%.2f"|format(d.delivery_fee) }}</td>
+          <td style="color: var(--success); font-weight: 700;">+${{ "%.2f"|format(d.tip) }}</td>
+          <td style="font-weight: 800; font-size: 1rem;">${{ "%.2f"|format(d.delivery_fee + d.tip) }}</td>
+          <td><span class="tag tag-success">Paid Out</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

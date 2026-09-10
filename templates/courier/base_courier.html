@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Courier Portal | CraveCart{% endblock %}</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Courier Portal Header -->
+  <header class="dashboard-top-nav">
+    <div class="dashboard-top-nav-inner">
+      <div class="top-nav-brand">
+        <a href="{{ url_for('index') }}" class="brand-logo" style="font-size: 1.25rem;">
+          <div class="logo-icon-wrap" style="width: 32px; height: 32px; font-size: 1rem;">🍔</div>
+          <div class="brand-name">Crave<span>Courier</span></div>
+        </a>
+        <span class="portal-badge-pill courier-pill">🛵 Active Fleet</span>
+      </div>
+      <div class="top-nav-user-area">
+        <span class="top-nav-restaurant-name">
+          <strong>{{ courier.name if courier else 'Courier Driver' }}</strong>
+          <span class="status-indicator-dot {% if courier and courier.is_online %}online{% else %}offline{% endif %}" title="Courier Shift Status"></span>
+        </span>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-xs" title="View Customer Food Marketplace">
+          👁️ Storefront
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline btn-xs btn-danger-hover" title="Sign out of account">
+          🚪 Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-brand-badge">
+        {% if courier and courier.avatar_url %}
+        <img src="{{ courier.avatar_url }}" alt="Courier" class="sidebar-avatar" style="border-radius: 50%;">
+        {% else %}
+        <div class="user-avatar-md user-avatar-placeholder role-courier" style="border-radius: 50%;">
+          <span>{{ (courier.name|trim)[0]|upper if (courier and courier.name) else '🛵' }}</span>
+        </div>
+        {% endif %}
+        <div>
+          <div class="sidebar-title">{{ courier.name if courier else 'Courier Driver' }}</div>
+          <div class="sidebar-subtitle">
+            {% if courier and courier.total_trips and courier.total_trips > 0 and courier.rating %}
+              ⭐ {{ "%.1f"|format(courier.rating) }} • {{ courier.vehicle_type or 'Active Fleet' }}
+            {% else %}
+              ✨ New • {{ courier.vehicle_type if courier else 'Active Fleet' }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Online Status Toggle -->
+      <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: 700; font-size: 0.85rem;">Online Status</span>
+        <label class="switch">
+          <input type="checkbox" id="courier-online-switch" {% if courier and courier.is_online %}checked{% endif %}>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="{{ url_for('courier_overview') }}" class="sidebar-link {% if request.path == '/courier' %}active{% endif %}">
+          <i>🛵</i> Overview & Shift
+        </a>
+        <a href="{{ url_for('courier_deliveries') }}" class="sidebar-link {% if request.path == '/courier/deliveries' %}active{% endif %}">
+          <i>📦</i> Deliveries Queue
+        </a>
+        <a href="{{ url_for('courier_earnings') }}" class="sidebar-link {% if request.path == '/courier/earnings' %}active{% endif %}">
+          <i>💵</i> Earnings & Payouts
+        </a>
+        <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.path == '/profile' %}active{% endif %}">
+          <i>⚙️</i> Vehicle & Profile
+        </a>
+      </nav>
+
+      <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm btn-block">
+          ← Back to Marketplace
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline btn-sm btn-block" style="color: var(--danger); border-color: var(--danger);">
+          🚪 Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <span>{{ message }}</span>
+              <button onclick="this.parentElement.remove()" style="font-weight: 800; color: inherit;">✕</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/courier.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,299 @@
+{% extends 'partner/base_partner.html' %}
+
+{% block title %}Restaurant Appearance & Storefront Settings | {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 880px;">
+  <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+        Storefront & Appearance
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Customize how your restaurant looks to customers on CraveCart, upload high-res banners & logos, and set operating parameters.
+      </p>
+    </div>
+
+    <a href="{{ url_for('restaurant_detail', restaurant_id=restaurant.id) }}" class="btn btn-secondary btn-sm" target="_blank">
+      <span>👁️</span> View Customer Storefront
+    </a>
+  </div>
+
+  <div style="background: #FFF; border: 1.5px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; box-shadow: var(--shadow-xs);">
+    
+    <!-- Live Customer Preview Card -->
+    <div style="margin-bottom: 32px; border: 1.5px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); background: #FFF;">
+      <div style="position: relative; height: 160px; background: #111827;">
+        <img id="rest-cover-preview" src="{{ restaurant.image_url }}" alt="{{ restaurant.name }}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
+        <div style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); color: #FFF; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full);">
+          Storefront Cover Preview
+        </div>
+      </div>
+
+      <div style="padding: 20px 24px; display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; position: relative; margin-top: -40px;">
+        <div style="display: flex; align-items: flex-end; gap: 16px;">
+          <div style="position: relative;">
+            <img id="rest-logo-preview" src="{{ restaurant.logo_url or restaurant.image_url }}" alt="Logo" style="width: 80px; height: 80px; border-radius: var(--radius-md); object-fit: cover; border: 4px solid #FFF; box-shadow: var(--shadow-md); background: #FFF;">
+          </div>
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--secondary); margin-bottom: 2px;">{{ restaurant.name }}</h2>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+              {{ restaurant.cuisine }} • ⭐ {{ restaurant.rating }} ({{ restaurant.review_count }}+ reviews) • {{ restaurant.price_level }}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <span class="tag {% if restaurant.is_open %}tag-success{% else %}tag-danger{% endif %}" style="font-size: 0.82rem; padding: 4px 12px;">
+            {% if restaurant.is_open %}🟢 Accepting Live Orders{% else %}🔴 Currently Closed{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Appearance & Settings Form -->
+    <form method="POST" action="{{ url_for('partner_profile') }}" enctype="multipart/form-data">
+      
+      <!-- Section 1: Visual Assets Upload -->
+      <div style="margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--secondary); margin-bottom: 14px;">Storefront Visual Branding</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <!-- Hero Cover Banner Upload -->
+          <div style="background: var(--bg-muted); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">📷 Storefront Hero Cover Banner</label>
+            <input type="file" id="rest-image-file" name="image_file" accept="image/*" class="form-control" style="padding: 6px; margin-bottom: 8px;" onchange="previewRestImage(this)">
+            <small style="color: var(--text-muted); font-size: 0.78rem; display: block;">Recommended: 1200x500px landscape photo.</small>
+            <input type="hidden" name="image_url" value="{{ restaurant.image_url }}">
+          </div>
+
+          <!-- Kitchen Logo / Avatar Upload -->
+          <div style="background: var(--bg-muted); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">🖼️ Kitchen Avatar / Logo</label>
+            <input type="file" id="rest-logo-file" name="logo_file" accept="image/*" class="form-control" style="padding: 6px; margin-bottom: 8px;" onchange="previewRestLogo(this)">
+            <small style="color: var(--text-muted); font-size: 0.78rem; display: block;">Recommended: 400x400px square logo.</small>
+            <input type="hidden" name="logo_url" value="{{ restaurant.logo_url or '' }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Core Restaurant Info -->
+      <div style="margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--secondary); margin-bottom: 14px;">Store Identity & Contact</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
+          <div>
+            <label class="form-label">Restaurant Business Name</label>
+            <input type="text" name="name" value="{{ restaurant.name }}" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Primary Cuisine & Specialties</label>
+            <input type="text" name="cuisine" value="{{ restaurant.cuisine }}" placeholder="e.g. Artisan Pizza, Italian, Healthy Bowls..." class="form-control" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px;">
+          <div>
+            <label class="form-label">Kitchen Phone Number</label>
+            <input type="text" name="phone" value="{{ restaurant.phone }}" class="form-control" required>
+          </div>
+        <div style="margin-bottom: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Physical Street Address & Map Location Pin</label>
+            <button type="button" class="btn btn-outline btn-xs" onclick="detectPartnerLocation()" style="padding: 3px 8px; font-size: 0.78rem;">
+              <span>📍</span> Locate Kitchen
+            </button>
+          </div>
+          <div class="input-icon-wrap" style="margin-bottom: 10px;">
+            <span class="input-icon">📍</span>
+            <input type="text" id="partner-address-input" name="address" value="{{ restaurant.address }}" class="form-control" required oninput="searchPartnerAddress(this.value)">
+          </div>
+
+          <!-- Hidden Map Coordinates -->
+          <input type="hidden" name="lat" id="partner-lat-input" value="{{ restaurant.lat or 40.7128 }}">
+          <input type="hidden" name="lng" id="partner-lng-input" value="{{ restaurant.lng or -74.0060 }}">
+
+          <!-- Interactive Leaflet Map Box -->
+          <div style="border-radius: var(--radius-md); overflow: hidden; border: 1.5px solid var(--border-color); background: #F8FAFC;">
+            <div id="partner-profile-map" style="height: 220px; width: 100%;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #FFFFFF; border-top: 1px solid var(--border-color); font-size: 0.8rem;">
+              <span style="color: var(--text-muted); font-size: 0.76rem;">👆 Drag the pin or click on map to update pickup coordinates</span>
+              <span style="background: var(--bg-muted); padding: 3px 8px; border-radius: 9999px; font-weight: 700; font-size: 0.75rem; color: var(--text-muted);" id="partner-coords-badge">
+                {{ "%.6f"|format(restaurant.lat or 40.7128) }}, {{ "%.6f"|format(restaurant.lng or -74.0060) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Store Description & Culinary Bio</label>
+          <textarea name="description" class="form-control" style="min-height: 90px; resize: vertical;" placeholder="Tell customers about your kitchen, chef specialties, culinary history, and farm-fresh ingredients...">{{ restaurant.description }}</textarea>
+        </div>
+      </div>
+
+      <!-- Section 3: Delivery Logistics & Pricing -->
+      <div style="margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--secondary); margin-bottom: 14px;">Delivery Logistics & Hours</h3>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div>
+            <label class="form-label">Min Order ($)</label>
+            <input type="number" step="0.50" min="0" name="min_order" value="{{ restaurant.min_order }}" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Delivery Fee ($)</label>
+            <input type="number" step="0.50" min="0" name="delivery_fee" value="{{ restaurant.delivery_fee }}" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Min ETA (Mins)</label>
+            <input type="number" min="5" name="delivery_time_min" value="{{ restaurant.delivery_time_min }}" class="form-control" required>
+          </div>
+          <div>
+            <label class="form-label">Max ETA (Mins)</label>
+            <input type="number" min="10" name="delivery_time_max" value="{{ restaurant.delivery_time_max }}" class="form-control" required>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-muted); padding: 16px 20px; border-radius: var(--radius-md); border: 1.5px solid var(--border-color);">
+          <label class="custom-checkbox-label" style="font-size: 0.95rem; font-weight: 700;">
+            <input type="checkbox" name="is_open" value="1" {% if restaurant.is_open %}checked{% endif %}>
+            <span>🟢 Kitchen Open & Actively Accepting Live Customer Orders</span>
+          </label>
+          <small style="color: var(--text-muted); display: block; margin-top: 4px; margin-left: 28px;">Uncheck during kitchen off-hours, maintenance, or prep shifts to pause incoming orders.</small>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="submit" class="btn btn-primary btn-lg">
+          💾 Save Settings & Storefront
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+function previewRestImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('rest-cover-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+    if (window.showToast) window.showToast('Cover banner selected! Click "Save Settings" to commit.', 'info');
+  }
+}
+
+function previewRestLogo(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('rest-logo-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+    if (window.showToast) window.showToast('Kitchen logo selected! Click "Save Settings" to commit.', 'info');
+  }
+}
+
+// Partner Profile Map Picker
+let partnerMap = null;
+let partnerMarker = null;
+
+function initPartnerProfileMap() {
+  const mapElem = document.getElementById('partner-profile-map');
+  if (!mapElem || typeof L === 'undefined') return;
+
+  const curLat = parseFloat(document.getElementById('partner-lat-input').value) || 40.7128;
+  const curLng = parseFloat(document.getElementById('partner-lng-input').value) || -74.0060;
+
+  partnerMap = L.map('partner-profile-map', {
+    center: [curLat, curLng],
+    zoom: 15,
+    scrollWheelZoom: false
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(partnerMap);
+
+  const customIcon = L.divIcon({
+    html: '<div style="font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.35)); cursor: pointer;">📍</div>',
+    className: 'custom-map-pin',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32]
+  });
+
+  partnerMarker = L.marker([curLat, curLng], {
+    draggable: true,
+    icon: customIcon
+  }).addTo(partnerMap);
+
+  partnerMarker.on('dragend', function (e) {
+    const pos = e.target.getLatLng();
+    updatePartnerCoords(pos.lat, pos.lng);
+  });
+
+  partnerMap.on('click', function (e) {
+    partnerMarker.setLatLng(e.latlng);
+    updatePartnerCoords(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function updatePartnerCoords(lat, lng) {
+  const latFixed = parseFloat(lat).toFixed(6);
+  const lngFixed = parseFloat(lng).toFixed(6);
+  document.getElementById('partner-lat-input').value = latFixed;
+  document.getElementById('partner-lng-input').value = lngFixed;
+  const badge = document.getElementById('partner-coords-badge');
+  if (badge) badge.textContent = `${latFixed}, ${lngFixed}`;
+}
+
+let partnerSearchTimeout = null;
+function searchPartnerAddress(val) {
+  clearTimeout(partnerSearchTimeout);
+  if (!val || val.length < 3 || !partnerMap) return;
+  partnerSearchTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        partnerMap.setView([lat, lon], 15);
+        partnerMarker.setLatLng([lat, lon]);
+        updatePartnerCoords(lat, lon);
+      }
+    } catch (e) {
+      console.log('Address search note:', e);
+    }
+  }, 500);
+}
+
+function detectPartnerLocation() {
+  if (!navigator.geolocation) {
+    if (window.showToast) window.showToast('Geolocation is not supported by your browser.', 'error');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    if (partnerMap && partnerMarker) {
+      partnerMap.setView([lat, lng], 16);
+      partnerMarker.setLatLng([lat, lng]);
+      updatePartnerCoords(lat, lng);
+    }
+  }, (err) => {
+    console.warn('Geolocation unavailable');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(initPartnerProfileMap, 150);
+});
+</script>
+{% endblock %}

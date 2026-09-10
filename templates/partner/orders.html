@@ -1,0 +1,603 @@
+{% extends 'partner/base_partner.html' %}
+
+{% block title %}Kitchen Order Queue | {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">Live Kitchen Order Board</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Real-time active kitchen tickets, cooking progress, and 1-click delivery fleet allocation.
+    </p>
+  </div>
+
+  <!-- Live Courier Fleet Status Bar -->
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 10px 18px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-xs); flex-wrap: wrap;">
+    <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+      🛵 Live Fleet:
+    </div>
+    <div style="display: flex; gap: 12px; font-size: 0.82rem; font-weight: 700;">
+      <span style="color: var(--success); display: flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></span>
+        {{ courier_fleet|selectattr('is_free', 'equalto', true)|list|length }} Free & Active
+      </span>
+      <span style="color: #D97706; display: flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #D97706;"></span>
+        {{ courier_fleet|selectattr('status_key', 'equalto', 'busy')|list|length }} Out for Delivery
+      </span>
+      <span style="color: #94A3B8; display: flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #94A3B8;"></span>
+        {{ courier_fleet|selectattr('is_online', 'equalto', 0)|list|length }} Offline
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="kitchen-board">
+  <!-- Column 1: New & Placed -->
+  <div class="kitchen-column">
+    <div class="column-header">
+      <span style="color: var(--primary);">📥 New Placed</span>
+      <span class="column-count-badge">
+        {{ orders|selectattr('status', 'equalto', 'placed')|list|length }}
+      </span>
+    </div>
+
+    {% for o in orders if o.status == 'placed' %}
+    <div class="order-ticket-card">
+      <div class="ticket-header">
+        <span>#{{ o.order_number }}</span>
+        <span style="color: var(--primary);">${{ "%.2f"|format(o.total) }}</span>
+      </div>
+      <div style="font-size: 0.82rem; font-weight: 700; color: var(--secondary); margin-bottom: 6px;">
+        👤 {{ o.customer_name }} • {{ o.customer_phone }}
+      </div>
+      <div class="ticket-items-list">
+        {% for it in o.order_items %}
+        <div>• <strong>{{ it.quantity }}x</strong> {{ it.name }} ({{ it.modifiers_summary }})</div>
+        {% endfor %}
+      </div>
+      {% if o.delivery_instructions %}
+      <div style="font-size: 0.75rem; color: var(--text-light); font-style: italic; margin-bottom: 10px;">
+        Note: "{{ o.delivery_instructions }}"
+      </div>
+      {% endif %}
+      <div class="ticket-actions">
+        <button class="btn btn-primary btn-sm btn-block kitchen-advance-btn" data-order-number="{{ o.order_number }}" data-target-status="confirmed">
+          ✓ Accept Order
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Column 2: Preparing in Kitchen -->
+  <div class="kitchen-column">
+    <div class="column-header">
+      <span style="color: var(--warning);">🍳 Preparing / Cooking</span>
+      <span class="column-count-badge" style="background: var(--warning);">
+        {{ orders|selectattr('status', 'in', ['confirmed', 'preparing'])|list|length }}
+      </span>
+    </div>
+
+    {% for o in orders if o.status in ['confirmed', 'preparing'] %}
+    <div class="order-ticket-card" style="border-left: 4px solid var(--warning);">
+      <div class="ticket-header">
+        <span>#{{ o.order_number }}</span>
+        <span>${{ "%.2f"|format(o.total) }}</span>
+      </div>
+      <div style="font-size: 0.82rem; font-weight: 700; margin-bottom: 6px;">
+        👤 {{ o.customer_name }}
+      </div>
+      <div class="ticket-items-list">
+        {% for it in o.order_items %}
+        <div>• <strong>{{ it.quantity }}x</strong> {{ it.name }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Courier Allocation Box -->
+      <div style="background: #F8FAFC; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 10px; font-size: 0.78rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="color: var(--text-muted); font-weight: 700;">Courier Status:</span>
+          {% if o.courier_name %}
+            <span class="tag tag-success" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 700;">
+              🛵 {{ o.courier_name }}
+            </span>
+          {% else %}
+            <span class="tag tag-warning" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 700;">
+              📡 Open Pool
+            </span>
+          {% endif %}
+        </div>
+        <button type="button" class="btn btn-outline btn-sm btn-block" style="font-size: 0.76rem; padding: 5px 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;"
+          onclick="openCourierAllocationModal('{{ o.order_number }}', '{{ o.customer_name|replace('\'', '\\\'') }}', {{ o.courier_id or 'null' }}, '{{ (o.courier_name or '')|replace('\'', '\\\'') }}')">
+          🛵 {% if o.courier_name %}Reallocate Delivery Guy{% else %}Allocate Delivery Guy{% endif %}
+        </button>
+      </div>
+
+      <div class="ticket-actions">
+        <button class="btn btn-secondary btn-sm btn-block kitchen-advance-btn" data-order-number="{{ o.order_number }}" data-target-status="ready">
+          📦 Mark Food as Ready
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Column 3: Ready for Pickup -->
+  <div class="kitchen-column">
+    <div class="column-header">
+      <span style="color: #0284C7;">🛵 Ready for Courier</span>
+      <span class="column-count-badge" style="background: #0284C7;">
+        {{ orders|selectattr('status', 'equalto', 'ready')|list|length }}
+      </span>
+    </div>
+
+    {% for o in orders if o.status == 'ready' %}
+    <div class="order-ticket-card" style="border-left: 4px solid #0284C7;">
+      <div class="ticket-header">
+        <span>#{{ o.order_number }}</span>
+        <span>${{ "%.2f"|format(o.total) }}</span>
+      </div>
+      <div style="font-size: 0.82rem; font-weight: 700; margin-bottom: 4px;">
+        👤 {{ o.customer_name }}
+      </div>
+      <div class="ticket-items-list">
+        {% for it in o.order_items %}
+        <div>• <strong>{{ it.quantity }}x</strong> {{ it.name }}</div>
+        {% endfor %}
+      </div>
+      
+      <!-- Dynamic Courier Assignment Section -->
+      <div style="background: #F0F9FF; padding: 10px 12px; border-radius: var(--radius-md); border: 1.5px solid #BAE6FD; margin-bottom: 10px; font-size: 0.78rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="color: #0369A1; font-weight: 800;">Assigned Courier:</span>
+          {% if o.courier_name %}
+            <span class="tag tag-success" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 800;">
+              🛵 {{ o.courier_name }} ({{ o.courier_vehicle or 'Vehicle' }})
+            </span>
+          {% else %}
+            <span class="tag tag-warning" style="font-size: 0.72rem; padding: 2px 8px; font-weight: 800;">
+              📡 Open Dispatch Pool
+            </span>
+          {% endif %}
+        </div>
+        
+        <!-- Interactive Delivery Allocation Button -->
+        <button type="button" class="btn btn-primary btn-sm btn-block" style="font-size: 0.8rem; font-weight: 800; padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: var(--shadow-xs);"
+          onclick="openCourierAllocationModal('{{ o.order_number }}', '{{ o.customer_name|replace('\'', '\\\'') }}', {{ o.courier_id or 'null' }}, '{{ (o.courier_name or '')|replace('\'', '\\\'') }}')">
+          🛵 {% if o.courier_name %}Change / Reallocate Courier{% else %}Delivery Allocation (Choose Driver){% endif %}
+        </button>
+      </div>
+
+      <div class="ticket-actions">
+        <button class="btn btn-outline btn-sm btn-block kitchen-advance-btn" data-order-number="{{ o.order_number }}" data-target-status="picked_up">
+          Hand to Courier (Out for Delivery) →
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Column 4: Dispatched & Delivered -->
+  <div class="kitchen-column">
+    <div class="column-header">
+      <span style="color: var(--success);">🎉 Out / Delivered</span>
+      <span class="column-count-badge" style="background: var(--success);">
+        {{ orders|selectattr('status', 'in', ['picked_up', 'on_the_way', 'delivered'])|list|length }}
+      </span>
+    </div>
+
+    {% for o in orders if o.status in ['picked_up', 'on_the_way', 'delivered'] %}
+    <div class="order-ticket-card" style="opacity: 0.98; border-left: 4px solid {% if o.status == 'delivered' %}var(--success){% else %}#3B82F6{% endif %};">
+      <div class="ticket-header">
+        <span>#{{ o.order_number }}</span>
+        <span class="tag {% if o.status == 'delivered' %}tag-success{% elif o.status == 'picked_up' %}tag-warning{% else %}tag-primary{% endif %}" style="font-size: 0.72rem; font-weight: 800;">
+          {{ o.status|replace('_', ' ')|capitalize }}
+        </span>
+      </div>
+      <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 6px;">
+        👤 {{ o.customer_name }} • {{ o.order_items|length }} items • ${{ "%.2f"|format(o.total) }}
+      </div>
+
+      <!-- Courier Assignment & Active Reallocation Card -->
+      <div style="background: var(--bg-muted); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-top: 6px; font-size: 0.78rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="color: var(--text-muted); font-weight: 700;">Delivery Courier:</span>
+          {% if o.courier_name %}
+            <span class="tag tag-success" style="font-size: 0.7rem; padding: 2px 6px; font-weight: 700;">
+              🛵 {{ o.courier_name }} ({{ o.courier_vehicle or 'Vehicle' }})
+            </span>
+          {% else %}
+            <span class="tag tag-warning" style="font-size: 0.7rem; padding: 2px 6px;">
+              📡 Open Dispatch Pool
+            </span>
+          {% endif %}
+        </div>
+        
+        {% if o.status != 'delivered' %}
+        <div style="margin-top: 6px;">
+          <button type="button" class="btn btn-outline btn-sm btn-block" style="font-size: 0.74rem; padding: 4px 8px; font-weight: 700;"
+            onclick="openCourierAllocationModal('{{ o.order_number }}', '{{ o.customer_name|replace('\'', '\\\'') }}', {{ o.courier_id or 'null' }}, '{{ (o.courier_name or '')|replace('\'', '\\\'') }}')">
+            🔄 Switch / Reallocate Delivery Guy
+          </button>
+        </div>
+        {% else %}
+        <div style="margin-top: 4px; font-size: 0.72rem; color: var(--success); font-weight: 700; text-align: center;">
+          ✓ Order successfully completed & delivered
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ==========================================================================
+     COURIER DELIVERY ALLOCATION MODAL
+     ========================================================================== -->
+<div id="courier-allocation-modal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px;">
+  <div style="background: #FFF; width: 100%; max-width: 620px; max-height: 90vh; border-radius: var(--radius-xl); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; animation: modalFadeIn 0.2s ease-out;">
+    
+    <!-- Modal Header -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FAFBFD;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.4rem;">🛵</span>
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">Delivery Allocation</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0 0;" id="alloc-modal-subtitle">
+          Select an available courier driver for Order #...
+        </p>
+      </div>
+      <button type="button" onclick="closeCourierAllocationModal()" style="background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); line-height: 1;">
+        ✕
+      </button>
+    </div>
+
+    <!-- Modal Search & Filters -->
+    <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); background: #FFF;">
+      <div style="position: relative; margin-bottom: 12px;">
+        <input type="text" id="alloc-courier-search" class="form-control" placeholder="🔍 Search courier by name, vehicle (e.g. Minu, Motorbike)..." style="padding-left: 14px; font-size: 0.9rem;" oninput="handleCourierSearchInput()">
+      </div>
+      
+      <!-- Filter Chips -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="alloc-filter-chips">
+        <button type="button" class="alloc-filter-btn active" data-filter="all" onclick="setCourierFilter('all', this)">
+          All Couriers
+        </button>
+        <button type="button" class="alloc-filter-btn" data-filter="available" onclick="setCourierFilter('available', this)">
+          🟢 Active & Available (Free)
+        </button>
+        <button type="button" class="alloc-filter-btn" data-filter="busy" onclick="setCourierFilter('busy', this)">
+          🛵 Out on Delivery
+        </button>
+        <button type="button" class="alloc-filter-btn" data-filter="offline" onclick="setCourierFilter('offline', this)">
+          ⚪ Offline
+        </button>
+      </div>
+    </div>
+
+    <!-- Couriers List (Scrollable) -->
+    <div style="padding: 16px 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;" id="alloc-courier-list-container">
+      <!-- Dynamically injected via JavaScript -->
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="padding: 14px 24px; border-top: 1px solid var(--border-color); background: #FAFBFD; display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-size: 0.78rem; color: var(--text-muted);">
+        🟢 = Free for pickup • 🛵 = Busy on delivery • ⚪ = Offline
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="closeCourierAllocationModal()">
+        Cancel
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.alloc-filter-btn {
+  background: var(--bg-muted);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.alloc-filter-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.alloc-filter-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #FFF;
+}
+.courier-alloc-card {
+  background: #FFF;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+}
+.courier-alloc-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+.courier-alloc-card.is-assigned {
+  border-color: #22C55E;
+  background: #F0FDF4;
+}
+</style>
+
+<script>
+let currentAllocOrder = {
+  orderNumber: null,
+  customerName: null,
+  currentCourierId: null,
+  currentCourierName: null
+};
+
+let cachedCouriers = {{ courier_fleet|tojson }};
+let currentFilter = 'all';
+let currentSearchQuery = '';
+
+function openCourierAllocationModal(orderNumber, customerName, currentCourierId, currentCourierName) {
+  currentAllocOrder = { orderNumber, customerName, currentCourierId, currentCourierName };
+  
+  const subtitle = document.getElementById('alloc-modal-subtitle');
+  if (subtitle) {
+    subtitle.innerHTML = `Assign delivery driver for Order <strong style="color: var(--primary);">#${orderNumber}</strong> (${customerName || 'Customer'})`;
+  }
+
+  // Reset search
+  const searchInput = document.getElementById('alloc-courier-search');
+  if (searchInput) searchInput.value = '';
+  currentSearchQuery = '';
+  currentFilter = 'all';
+
+  // Reset filter buttons
+  document.querySelectorAll('.alloc-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === 'all');
+  });
+
+  const modal = document.getElementById('courier-allocation-modal');
+  if (modal) modal.style.display = 'flex';
+
+  // Fetch real-time status to guarantee fresh data
+  fetchCourierFleetStatus();
+}
+
+function closeCourierAllocationModal() {
+  const modal = document.getElementById('courier-allocation-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Close on backdrop click
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('courier-allocation-modal');
+  if (modal && e.target === modal) {
+    closeCourierAllocationModal();
+  }
+});
+
+async function fetchCourierFleetStatus() {
+  renderCourierAllocList();
+  try {
+    const res = await fetch('/api/couriers/status-list');
+    const data = await res.json();
+    if (data.success && data.couriers) {
+      cachedCouriers = data.couriers;
+      renderCourierAllocList();
+    }
+  } catch (err) {
+    console.error('Error fetching fleet status:', err);
+  }
+}
+
+function setCourierFilter(filterKey, element) {
+  currentFilter = filterKey;
+  document.querySelectorAll('.alloc-filter-btn').forEach(b => b.classList.remove('active'));
+  if (element) element.classList.add('active');
+  renderCourierAllocList();
+}
+
+function handleCourierSearchInput() {
+  const searchInput = document.getElementById('alloc-courier-search');
+  currentSearchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  renderCourierAllocList();
+}
+
+function renderCourierAllocList() {
+  const container = document.getElementById('alloc-courier-list-container');
+  if (!container) return;
+
+  // Filter couriers
+  let list = cachedCouriers.filter(c => {
+    // Search match
+    if (currentSearchQuery) {
+      const matchName = (c.name || '').toLowerCase().includes(currentSearchQuery);
+      const matchVehicle = (c.vehicle_type || '').toLowerCase().includes(currentSearchQuery);
+      const matchPhone = (c.phone || '').toLowerCase().includes(currentSearchQuery);
+      if (!matchName && !matchVehicle && !matchPhone) return false;
+    }
+
+    // Tab filter
+    if (currentFilter === 'available') return c.status_key === 'available';
+    if (currentFilter === 'busy') return c.status_key === 'busy';
+    if (currentFilter === 'offline') return c.status_key === 'offline';
+    return true;
+  });
+
+  let html = '';
+
+  // 1. Open Pool Broadcast Card (only if not searching or if search matches open pool)
+  if (!currentSearchQuery || 'open broadcast pool'.includes(currentSearchQuery)) {
+    const isPoolActive = !currentAllocOrder.currentCourierId;
+    html += `
+      <div class="courier-alloc-card ${isPoolActive ? 'is-assigned' : ''}" style="background: #F8FAFC; border: 1.5px dashed ${isPoolActive ? '#22C55E' : '#CBD5E1'};">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+            📡
+          </div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary); display: flex; align-items: center; gap: 6px;">
+              Open Dispatch Pool
+              <span class="tag tag-primary" style="font-size: 0.68rem; padding: 1px 6px;">Broadcast to All</span>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              Broadcast ticket to all active couriers in downtown delivery zone
+            </div>
+          </div>
+        </div>
+
+        <div>
+          ${isPoolActive ? `
+            <span class="tag tag-success" style="font-size: 0.8rem; padding: 6px 12px; font-weight: 800;">
+              ✓ Current (Open)
+            </span>
+          ` : `
+            <button type="button" class="btn btn-outline btn-sm" style="font-weight: 700;" onclick="allocateCourierToOrder(null, 'Open Pool')">
+              📡 Broadcast to Pool
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  if (list.length === 0) {
+    html += `
+      <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.9rem;">
+        No couriers matching your search criteria.
+      </div>
+    `;
+    container.innerHTML = html;
+    return;
+  }
+
+  // 2. Courier Cards
+  list.forEach(c => {
+    const isAssigned = (currentAllocOrder.currentCourierId && currentAllocOrder.currentCourierId === c.id);
+    const isAvailable = c.status_key === 'available';
+    const isBusy = c.status_key === 'busy';
+    const isOffline = c.status_key === 'offline';
+
+    let statusBadgeHtml = '';
+    if (isAvailable) {
+      statusBadgeHtml = `<span class="tag tag-success" style="font-size: 0.75rem; font-weight: 700; padding: 3px 8px;">🟢 Active & Available (Free)</span>`;
+    } else if (isBusy) {
+      statusBadgeHtml = `<span class="tag tag-warning" style="font-size: 0.75rem; font-weight: 700; padding: 3px 8px;">🛵 ${c.status_label}</span>`;
+    } else {
+      statusBadgeHtml = `<span class="tag" style="background: #E2E8F0; color: #64748B; font-size: 0.75rem; font-weight: 700; padding: 3px 8px;">⚪ Offline</span>`;
+    }
+
+    let actionBtnHtml = '';
+    if (isAssigned) {
+      actionBtnHtml = `
+        <span class="tag tag-success" style="font-size: 0.8rem; padding: 6px 12px; font-weight: 800;">
+          ✓ Currently Assigned
+        </span>
+      `;
+    } else if (isAvailable) {
+      actionBtnHtml = `
+        <button type="button" class="btn btn-primary btn-sm" style="font-weight: 800; padding: 6px 14px;" onclick="allocateCourierToOrder(${c.id}, '${c.name.replace('\'', '\\\'')}')">
+          🚀 Allocate ${c.name.split(' ')[0]}
+        </button>
+      `;
+    } else if (isBusy) {
+      actionBtnHtml = `
+        <button type="button" class="btn btn-outline btn-sm" style="border-color: #D97706; color: #D97706; font-weight: 700; padding: 5px 10px;" onclick="allocateCourierToOrder(${c.id}, '${c.name.replace('\'', '\\\'')}')" title="Courier currently has active delivery">
+          ⚡ Assign Anyway
+        </button>
+      `;
+    } else {
+      actionBtnHtml = `
+        <button type="button" class="btn btn-outline btn-sm" style="opacity: 0.75; font-size: 0.76rem;" onclick="allocateCourierToOrder(${c.id}, '${c.name.replace('\'', '\\\'')}')">
+          Assign (Offline)
+        </button>
+      `;
+    }
+
+    const firstLetter = (c.name || 'C')[0].toUpperCase();
+
+    html += `
+      <div class="courier-alloc-card ${isAssigned ? 'is-assigned' : ''}">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="position: relative;">
+            ${c.avatar_url ? `
+              <img src="${c.avatar_url}" alt="${c.name}" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--border-color);">
+            ` : `
+              <div style="width: 44px; height: 44px; border-radius: 50%; background: #EFF6FF; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; border: 1.5px solid #BFDBFE;">
+                ${firstLetter}
+              </div>
+            `}
+            <span style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #FFF; background: ${c.is_online ? '#22C55E' : '#94A3B8'};"></span>
+          </div>
+
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 800; font-size: 0.95rem; color: var(--secondary);">${c.name}</span>
+              <span class="tag" style="background: var(--bg-muted); font-size: 0.7rem; font-weight: 700; padding: 1px 6px;">
+                🛵 ${c.vehicle_type || 'Motorbike'}
+              </span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 10px; font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
+              <span>⭐ ${c.rating ? c.rating.toFixed(1) : 'New'}</span>
+              <span>•</span>
+              <span>${c.total_trips || 0} completed trips</span>
+              <span>•</span>
+              <span>📞 ${c.phone || ''}</span>
+            </div>
+
+            <div style="margin-top: 4px;">
+              ${statusBadgeHtml}
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          ${actionBtnHtml}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+async function allocateCourierToOrder(courierId, courierName) {
+  if (!currentAllocOrder.orderNumber) return;
+
+  try {
+    const res = await fetch(`/api/orders/${currentAllocOrder.orderNumber}/assign-courier`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courier_id: courierId ? parseInt(courierId) : null })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast(data.message, 'success');
+      closeCourierAllocationModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      if (window.showToast) window.showToast(data.message || 'Failed to allocate courier', 'error');
+    }
+  } catch (err) {
+    if (window.showToast) window.showToast('Network error while allocating courier', 'error');
+  }
+}
+</script>
+{% endblock %}

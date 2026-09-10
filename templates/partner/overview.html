@@ -1,0 +1,347 @@
+{% extends 'partner/base_partner.html' %}
+
+{% block title %}Dashboard Overview | {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+      Welcome back, {{ current_user.name.split(' ')[0] if current_user else 'Partner' }} 👋
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.92rem;">
+      Here is your live performance summary and menu setup status for <strong>{{ restaurant.name }}</strong>.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <a href="{{ url_for('partner_menu') }}" class="btn btn-primary btn-sm">
+      🍳 + Add Dish to Menu
+    </a>
+    <a href="{{ url_for('restaurant_detail', restaurant_id=restaurant.id) }}" class="btn btn-outline btn-sm" target="_blank" title="View customer storefront">
+      👁️ View Storefront
+    </a>
+    <a href="{{ url_for('partner_orders') }}" class="btn btn-secondary btn-sm">
+      📋 Kitchen Queue ({{ active_queue_count }} Active)
+    </a>
+  </div>
+</div>
+
+<!-- New Restaurant Quick Setup Checklist Card -->
+<div class="data-table-card" style="margin-bottom: 28px; background: linear-gradient(135deg, #FFFFFF 0%, #FFF9F4 100%); border: 1.5px solid var(--border-color); padding: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+    <div>
+      <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: var(--primary); letter-spacing: 0.5px;">Storefront Setup & Onboarding</div>
+      <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary);">Restaurant Launch Checklist</h2>
+    </div>
+    <div>
+      <span class="tag {% if dish_count > 0 %}tag-success{% else %}tag-warning{% endif %}" style="font-size: 0.82rem; padding: 4px 12px;">
+        {% if dish_count > 0 %}✅ Ready for Orders ({{ dish_count }} Dishes Live){% else %}⏳ Setup in Progress{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="stats-grid" style="margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+    <!-- Step 1: Storefront Branding -->
+    <div class="setup-checklist-card" onclick="openQuickStorefrontModal()" style="cursor: pointer;" title="Click to edit restaurant storefront and appearance">
+      <div class="setup-icon-box" style="background: #FFF3EB; color: #EA580C;">🖼️</div>
+      <div class="setup-details">
+        <div class="setup-step-num">Step 1</div>
+        <div class="setup-title">Storefront & Appearance</div>
+        <div class="setup-desc">Cover banner, logo, phone & delivery radius</div>
+      </div>
+      <button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openQuickStorefrontModal();" style="border-color: var(--primary); color: var(--primary); font-weight: 700;">
+        ✏️ Edit
+      </button>
+    </div>
+
+    <!-- Step 2: Fill Menu & Categories -->
+    <a href="{{ url_for('partner_menu') }}" class="setup-checklist-card" style="text-decoration: none;" title="Manage menu items and portion sizes">
+      <div class="setup-icon-box" style="background: #ECFDF5; color: #059669;">📜</div>
+      <div class="setup-details">
+        <div class="setup-step-num">Step 2</div>
+        <div class="setup-title">Fill & Organize Menu</div>
+        <div class="setup-desc">{{ category_count }} Categories • {{ dish_count }} Dishes Created</div>
+      </div>
+      <span class="setup-arrow">Manage →</span>
+    </a>
+
+    <!-- Step 3: Kitchen Open/Closed Status -->
+    <div class="setup-checklist-card" onclick="toggleKitchenStatusOverview(event)" style="cursor: pointer;" title="Click to toggle kitchen operating status">
+      <div class="setup-icon-box" style="background: #EFF6FF; color: #2563EB;">⏰</div>
+      <div class="setup-details">
+        <div class="setup-step-num">Step 3</div>
+        <div class="setup-title">Operating Status</div>
+        <div class="setup-desc" id="overview-status-desc">Kitchen status: <strong id="overview-status-label">{% if restaurant.is_open %}Open for Delivery{% else %}Temporarily Closed{% endif %}</strong></div>
+      </div>
+      <button type="button" id="overview-status-btn" class="btn btn-xs {% if restaurant.is_open %}btn-success{% else %}btn-danger{% endif %}" onclick="event.stopPropagation(); toggleKitchenStatusOverview(event);">
+        {% if restaurant.is_open %}🟢 Live{% else %}🔴 Paused{% endif %}
+      </button>
+    </div>
+
+    <!-- Step 4: Preview Storefront -->
+    <a href="{{ url_for('restaurant_detail', restaurant_id=restaurant.id) }}" class="setup-checklist-card" target="_blank" style="text-decoration: none;" title="Open customer live storefront">
+      <div class="setup-icon-box" style="background: #FDF4FF; color: #C026D3;">👁️</div>
+      <div class="setup-details">
+        <div class="setup-step-num">Step 4</div>
+        <div class="setup-title">Customer Experience</div>
+        <div class="setup-desc">Preview your live menu on CraveCart</div>
+      </div>
+      <span class="setup-arrow">Preview ↗</span>
+    </a>
+  </div>
+</div>
+
+<!-- KPI Stat Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Today's Revenue</span>
+      <span class="stat-value">${{ "%.2f"|format(total_sales) }}</span>
+    </div>
+    <div class="stat-icon-wrap">💰</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Total Orders</span>
+      <span class="stat-value">{{ order_count }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="background: #E0F2FE; color: #0284C7;">📦</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Avg Order Value</span>
+      <span class="stat-value">${{ "%.2f"|format(avg_order_value) }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="background: #FEF3C7; color: #D97706;">📊</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-info-left">
+      <span class="stat-label">Customer Rating</span>
+      {% if restaurant and restaurant.review_count and restaurant.review_count > 0 and restaurant.rating %}
+        <span class="stat-value">{{ "%.1f"|format(restaurant.rating) }} ⭐</span>
+      {% else %}
+        <span class="stat-value" style="font-size: 1.35rem; color: var(--primary);">New ✨</span>
+        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">0 reviews yet</span>
+      {% endif %}
+    </div>
+    <div class="stat-icon-wrap" style="background: var(--success-light); color: var(--success);">🏆</div>
+  </div>
+</div>
+
+<!-- Recent Orders Table Card -->
+<div class="data-table-card" style="margin-bottom: 36px;">
+  <div style="padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+    <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">Recent Incoming Orders</h3>
+    <a href="{{ url_for('partner_orders') }}" class="view-all-link">View all orders →</a>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Order Number</th>
+        <th>Customer</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Time</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in recent_orders %}
+      <tr>
+        <td style="font-weight: 800; color: var(--secondary);">#{{ o.order_number }}</td>
+        <td>Customer #{{ o.customer_id }}</td>
+        <td style="font-weight: 700;">${{ "%.2f"|format(o.total) }}</td>
+        <td>
+          <span class="tag {% if o.status == 'delivered' %}tag-success{% elif o.status in ('placed','confirmed','preparing') %}tag-primary{% else %}tag-warning{% endif %}">
+            {{ o.status|replace('_', ' ')|capitalize }}
+          </span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 0.82rem;">{{ o.created_at }}</td>
+        <td>
+          <a href="{{ url_for('partner_orders') }}" class="btn btn-outline btn-sm">Manage</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Quick Storefront & Appearance Edit Modal -->
+<div class="modal-backdrop" id="quick-storefront-modal">
+  <div class="modal-container" style="max-width: 680px; padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: #FFF; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.3rem;">🖼️</span>
+        <div>
+          <h3 class="modal-title" style="margin: 0; color: #FFF; font-size: 1.15rem;">Storefront & Appearance Settings</h3>
+          <p style="margin: 0; font-size: 0.78rem; color: #9CA3AF;">Update {{ restaurant.name }} banner, logo, and core parameters</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeQuickStorefrontModal()" style="color: #FFF; background: rgba(255,255,255,0.1); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">✕</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('partner_profile') }}" enctype="multipart/form-data" style="padding: 22px;">
+      
+      <!-- Visual Assets Row -->
+      <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 18px;">
+        
+        <!-- Cover Banner Upload -->
+        <div style="background: var(--bg-muted); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <label style="display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 6px;">Storefront Hero Cover Banner</label>
+          <div style="position: relative; height: 90px; border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 8px; border: 1px solid var(--border-color); background: #111;">
+            <img id="quick-cover-preview" src="{{ restaurant.image_url }}" alt="Cover" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+          <input type="file" name="image_file" accept="image/*" class="form-control" style="padding: 4px; font-size: 0.78rem;" onchange="previewQuickCover(this)">
+          <input type="hidden" name="image_url" id="quick-cover-url" value="{{ restaurant.image_url }}">
+        </div>
+
+        <!-- Kitchen Logo Upload -->
+        <div style="background: var(--bg-muted); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <label style="display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 6px;">Kitchen Logo / Avatar</label>
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+            <div style="width: 60px; height: 60px; border-radius: var(--radius-md); overflow: hidden; border: 2px solid #FFF; box-shadow: var(--shadow-sm); background: #FFF; flex-shrink: 0;">
+              <img id="quick-logo-preview" src="{{ restaurant.logo_url or restaurant.image_url }}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div style="flex: 1;">
+              <input type="file" name="logo_file" accept="image/*" class="form-control" style="padding: 4px; font-size: 0.78rem;" onchange="previewQuickLogo(this)">
+              <input type="hidden" name="logo_url" id="quick-logo-url" value="{{ restaurant.logo_url or '' }}">
+            </div>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.72rem; display: block;">Square logo or kitchen avatar photo</small>
+        </div>
+      </div>
+
+      <!-- Core Details -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label class="form-label" style="font-size: 0.82rem; margin-bottom: 4px;">Restaurant Name</label>
+          <input type="text" name="name" value="{{ restaurant.name }}" class="form-control" style="padding: 6px 10px; font-size: 0.88rem;" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 0.82rem; margin-bottom: 4px;">Cuisine & Specialties</label>
+          <input type="text" name="cuisine" value="{{ restaurant.cuisine }}" class="form-control" style="padding: 6px 10px; font-size: 0.88rem;" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label class="form-label" style="font-size: 0.82rem; margin-bottom: 4px;">Kitchen Phone</label>
+          <input type="text" name="phone" value="{{ restaurant.phone }}" class="form-control" style="padding: 6px 10px; font-size: 0.88rem;" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 0.82rem; margin-bottom: 4px;">Physical Street Address</label>
+          <input type="text" name="address" value="{{ restaurant.address }}" class="form-control" style="padding: 6px 10px; font-size: 0.88rem;" required>
+        </div>
+      </div>
+
+      <input type="hidden" name="lat" value="{{ restaurant.lat or 40.7128 }}">
+      <input type="hidden" name="lng" value="{{ restaurant.lng or -74.0060 }}">
+      <input type="hidden" name="description" value="{{ restaurant.description or '' }}">
+
+      <!-- Pricing & Logistics -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+        <div>
+          <label class="form-label" style="font-size: 0.78rem; margin-bottom: 4px;">Min Order ($)</label>
+          <input type="number" step="0.50" min="0" name="min_order" value="{{ restaurant.min_order }}" class="form-control" style="padding: 6px 8px; font-size: 0.85rem;" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 0.78rem; margin-bottom: 4px;">Delivery Fee ($)</label>
+          <input type="number" step="0.50" min="0" name="delivery_fee" value="{{ restaurant.delivery_fee }}" class="form-control" style="padding: 6px 8px; font-size: 0.85rem;" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 0.78rem; margin-bottom: 4px;">Min ETA (min)</label>
+          <input type="number" min="5" name="delivery_time_min" value="{{ restaurant.delivery_time_min }}" class="form-control" style="padding: 6px 8px; font-size: 0.85rem;" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size: 0.78rem; margin-bottom: 4px;">Max ETA (min)</label>
+          <input type="number" min="10" name="delivery_time_max" value="{{ restaurant.delivery_time_max }}" class="form-control" style="padding: 6px 8px; font-size: 0.85rem;" required>
+        </div>
+      </div>
+
+      <!-- Kitchen Open/Closed Toggle -->
+      <div style="background: var(--bg-muted); padding: 10px 14px; border-radius: var(--radius-md); border: 1.5px solid var(--border-color); margin-bottom: 18px;">
+        <label class="custom-checkbox-label" style="font-size: 0.88rem; font-weight: 700;">
+          <input type="checkbox" name="is_open" value="1" {% if restaurant.is_open %}checked{% endif %}>
+          <span>🟢 Kitchen Open & Actively Accepting Live Customer Orders</span>
+        </label>
+      </div>
+
+      <!-- Footer Action Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+        <a href="{{ url_for('partner_profile') }}" style="font-size: 0.82rem; font-weight: 700; color: var(--primary); text-decoration: none;">
+          ⚙️ Open Full Settings & Interactive Map Pin ↗
+        </a>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeQuickStorefrontModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">💾 Save Storefront Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openQuickStorefrontModal() {
+  const modal = document.getElementById('quick-storefront-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeQuickStorefrontModal() {
+  const modal = document.getElementById('quick-storefront-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function previewQuickCover(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('quick-cover-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function previewQuickLogo(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('quick-logo-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+async function toggleKitchenStatusOverview(event) {
+  if (event) event.stopPropagation();
+  try {
+    const res = await fetch('/api/partner/toggle-status', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast(data.message, 'success');
+      const label = document.getElementById('overview-status-label');
+      const btn = document.getElementById('overview-status-btn');
+      if (label) label.textContent = data.is_open ? 'Open for Delivery' : 'Temporarily Closed';
+      if (btn) {
+        btn.className = 'btn btn-xs ' + (data.is_open ? 'btn-success' : 'btn-danger');
+        btn.textContent = data.is_open ? '🟢 Live' : '🔴 Paused';
+      }
+    }
+  } catch(err) {
+    if (window.showToast) window.showToast('Network error updating status', 'error');
+  }
+}
+
+// Close modal on escape key or clicking backdrop
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeQuickStorefrontModal();
+});
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('quick-storefront-modal');
+  if (modal && e.target === modal) closeQuickStorefrontModal();
+});
+</script>
+{% endblock %}

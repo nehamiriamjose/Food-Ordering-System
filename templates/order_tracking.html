@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+
+{% block title %}Tracking Order {{ order.order_number }} | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px;" id="tracking-container" data-order-status="{{ order.status }}">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary);" id="tracking-order-number" data-order-number="{{ order.order_number }}">
+          Order {{ order.order_number }}
+        </h1>
+        <span class="tag tag-primary" style="font-size: 0.85rem;">Live Tracking</span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        From <strong>{{ restaurant.name }}</strong> • Placed on {{ order.created_at }}
+      </p>
+    </div>
+
+    <!-- Simulator Button for easy testing -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="btn btn-secondary btn-sm" id="sim-advance-status-btn" title="Simulate progressing to the next order step">
+        ⚡ Advance Demo Status →
+      </button>
+    </div>
+  </div>
+
+  <div class="tracking-layout">
+    <!-- Left Column: Status Timeline, Animated Map & Driver Info -->
+    <div>
+      <!-- Live Status Timeline Card -->
+      <div class="tracking-status-card">
+        <div class="tracking-eta-header">
+          <div>
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Estimated Delivery Time</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--secondary);">{{ order.estimated_delivery_time }}</div>
+          </div>
+          <div class="eta-badge" id="current-status-title">
+            {{ order.status|replace('_', ' ')|capitalize }}
+          </div>
+        </div>
+
+        <p id="current-status-desc" style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 24px;">
+          Your order is progressing smoothly.
+        </p>
+
+        <!-- Multi-Step Timeline -->
+        <div class="timeline-container">
+          <div class="timeline-progress-bar">
+            <div class="timeline-progress-fill" id="timeline-progress-fill"></div>
+          </div>
+
+          <div class="timeline-step" data-step="placed">
+            <div class="timeline-node">📝</div>
+            <span class="timeline-label">Placed</span>
+          </div>
+
+          <div class="timeline-step" data-step="confirmed">
+            <div class="timeline-node">✓</div>
+            <span class="timeline-label">Confirmed</span>
+          </div>
+
+          <div class="timeline-step" data-step="preparing">
+            <div class="timeline-node">🍳</div>
+            <span class="timeline-label">Cooking</span>
+          </div>
+
+          <div class="timeline-step" data-step="ready">
+            <div class="timeline-node">📦</div>
+            <span class="timeline-label">Ready</span>
+          </div>
+
+          <div class="timeline-step" data-step="picked_up">
+            <div class="timeline-node">🛵</div>
+            <span class="timeline-label">Picked Up</span>
+          </div>
+
+          <div class="timeline-step" data-step="on_the_way">
+            <div class="timeline-node">📍</div>
+            <span class="timeline-label">On Way</span>
+          </div>
+
+          <div class="timeline-step" data-step="delivered">
+            <div class="timeline-node">🎉</div>
+            <span class="timeline-label">Delivered</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animated Live SVG Map Route -->
+      <div class="tracking-map-box">
+        <svg id="tracking-map-svg" class="map-svg-canvas" viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+          <!-- Stylized Map Background Grid & Roads -->
+          <rect width="800" height="320" fill="#E8EDF2"/>
+          <path d="M0 60 H800 M0 140 H800 M0 220 H800 M0 290 H800" stroke="#CBD5E1" stroke-width="8"/>
+          <path d="M120 0 V320 M280 0 V320 M460 0 V320 M640 0 V320" stroke="#CBD5E1" stroke-width="8"/>
+          
+          <!-- Park / River elements -->
+          <rect x="300" y="40" width="140" height="80" rx="12" fill="#D1FAE5" opacity="0.8"/>
+          <text x="370" y="85" fill="#059669" font-size="12" font-weight="700" text-anchor="middle">Central Green Park</text>
+
+          <!-- Delivery Route Path -->
+          <path id="svg-route-path" d="M 120 140 L 280 140 L 280 220 L 460 220 L 640 220 L 640 140" fill="none" stroke="#F4513A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 6"/>
+
+          <!-- Restaurant Marker (Start) -->
+          <g transform="translate(100, 105)">
+            <circle cx="20" cy="20" r="18" fill="#1F2933" stroke="#FFF" stroke-width="3"/>
+            <text x="20" y="25" text-anchor="middle" font-size="14">🍳</text>
+            <rect x="-20" y="-22" width="80" height="20" rx="4" fill="#1F2933"/>
+            <text x="20" y="-8" fill="#FFF" font-size="10" font-weight="800" text-anchor="middle">{{ restaurant.name }}</text>
+          </g>
+
+          <!-- Customer Drop-off Marker (End) -->
+          <g transform="translate(620, 105)">
+            <circle cx="20" cy="20" r="18" fill="#10B981" stroke="#FFF" stroke-width="3"/>
+            <text x="20" y="25" text-anchor="middle" font-size="14">🏠</text>
+            <rect x="-20" y="-22" width="80" height="20" rx="4" fill="#10B981"/>
+            <text x="20" y="-8" fill="#FFF" font-size="10" font-weight="800" text-anchor="middle">Your Location</text>
+          </g>
+
+          <!-- Moving Courier Motorcycle Icon Marker -->
+          <g id="svg-courier-marker" transform="translate(100, 120)">
+            <circle cx="20" cy="20" r="22" fill="#F4513A" stroke="#FFF" stroke-width="3" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.3))"/>
+            <text x="20" y="26" text-anchor="middle" font-size="16">🛵</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Courier Details Card -->
+      {% if courier %}
+      <div class="courier-driver-card">
+        <div class="driver-info-left">
+          {% if courier.avatar_url %}
+          <img src="{{ courier.avatar_url }}" alt="{{ courier.name }}" class="driver-avatar-img">
+          {% else %}
+          <div class="user-avatar-md user-avatar-placeholder role-courier" style="width: 44px; height: 44px; border-radius: 50%;">
+            <span>{{ (courier.name|trim)[0]|upper if courier.name else '🛵' }}</span>
+          </div>
+          {% endif %}
+          <div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: var(--secondary);">{{ courier.name }}</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">
+              ⭐ {{ courier.rating }} ({{ courier.total_trips }}+ deliveries) • {{ courier.vehicle_type }} ({{ courier.vehicle_plate }})
+            </div>
+          </div>
+        </div>
+
+        <div class="driver-actions">
+          <button class="btn btn-outline btn-sm" onclick="contactCourier('call')">📞 Call</button>
+          <button class="btn btn-primary btn-sm" onclick="contactCourier('message')">💬 Message</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Receipt & Address Card -->
+    <div>
+      <div class="cart-summary-card">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+          Receipt Details
+        </h3>
+
+        <div style="margin-bottom: 18px;">
+          {% for item in items %}
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+            <div>
+              <span style="font-weight: 700;">{{ item.quantity }}x</span> {{ item.name }}
+              {% if item.modifiers_summary and item.modifiers_summary != 'Standard' %}
+              <div style="font-size: 0.78rem; color: var(--text-muted);">{{ item.modifiers_summary }}</div>
+              {% endif %}
+            </div>
+            <span style="font-weight: 700;">${{ "%.2f"|format(item.total_price) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Subtotal</span>
+            <span>${{ "%.2f"|format(order.subtotal) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Delivery Fee</span>
+            <span>${{ "%.2f"|format(order.delivery_fee) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Taxes & Fees</span>
+            <span>${{ "%.2f"|format(order.tax + order.service_fee) }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Courier Tip</span>
+            <span>${{ "%.2f"|format(order.tip) }}</span>
+          </div>
+          {% if order.discount > 0 %}
+          <div style="display: flex; justify-content: space-between; color: var(--success); font-weight: 700;">
+            <span>Discount ({{ order.promo_code }})</span>
+            <span>-${{ "%.2f"|format(order.discount) }}</span>
+          </div>
+          {% endif %}
+          <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--border-color);">
+            <span>Total Paid</span>
+            <span>${{ "%.2f"|format(order.total) }}</span>
+          </div>
+        </div>
+
+        <!-- Delivery Destination Address -->
+        <div style="margin-top: 20px; padding: 14px; background: var(--bg-muted); border-radius: var(--radius-md); font-size: 0.85rem;">
+          <div style="font-weight: 800; color: var(--secondary); margin-bottom: 4px;">📍 Delivery Location</div>
+          <div style="color: var(--text-muted); line-height: 1.4;">
+            {{ address.street }}{% if address.apartment %}, {{ address.apartment }}{% endif %}<br>
+            {{ address.city }}, {{ address.zip_code }}
+          </div>
+          {% if order.delivery_instructions %}
+          <div style="margin-top: 8px; color: var(--text-muted);">
+            <strong>Notes:</strong> "{{ order.delivery_instructions }}"
+          </div>
+          {% endif %}
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="{{ url_for('help_center') }}" style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">
+            Need help with this order? Contact Support →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/tracking.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Partner Portal | CraveCart{% endblock %}</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+
+  <!-- Top Partner Portal Header -->
+  <header class="dashboard-top-nav">
+    <div class="dashboard-top-nav-inner">
+      <div class="top-nav-brand">
+        <a href="{{ url_for('index') }}" class="brand-logo" style="font-size: 1.25rem;">
+          <div class="logo-icon-wrap" style="width: 32px; height: 32px; font-size: 1rem;">🍔</div>
+          <div class="brand-name">Crave<span>Partner</span></div>
+        </a>
+        <span class="portal-badge-pill partner-pill">🍳 Kitchen Manager</span>
+      </div>
+      <div class="top-nav-user-area">
+        <span class="top-nav-restaurant-name">
+          <strong>{{ restaurant.name if restaurant else 'Restaurant' }}</strong>
+          <span class="status-indicator-dot online" title="Restaurant Open & Accepting Orders"></span>
+        </span>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-xs" title="View Customer Food Marketplace">
+          👁️ Storefront
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline btn-xs btn-danger-hover" title="Sign out of account">
+          🚪 Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-brand-badge">
+        <img src="{{ restaurant.image_url if restaurant else 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&auto=format&fit=crop&q=80' }}" alt="Restaurant" class="sidebar-avatar">
+        <div>
+          <div class="sidebar-title">{{ restaurant.name if restaurant else 'Ember & Crust' }}</div>
+          <div class="sidebar-subtitle">
+            {% if restaurant and restaurant.review_count and restaurant.review_count > 0 and restaurant.rating %}
+              ⭐ {{ "%.1f"|format(restaurant.rating) }} ({{ restaurant.review_count }}+ reviews)
+            {% else %}
+              ✨ New (0 reviews)
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-menu">
+        <a href="{{ url_for('partner_overview') }}" class="sidebar-link {% if request.path == '/partner' %}active{% endif %}">
+          <i>📊</i> Overview
+        </a>
+        <a href="{{ url_for('partner_orders') }}" class="sidebar-link {% if request.path == '/partner/orders' %}active{% endif %}">
+          <i>🍳</i> Kitchen Order Board
+        </a>
+        <a href="{{ url_for('partner_menu') }}" class="sidebar-link {% if request.path == '/partner/menu' %}active{% endif %}">
+          <i>📜</i> Menu Management
+        </a>
+        <a href="{{ url_for('partner_profile') }}" class="sidebar-link {% if request.path == '/partner/restaurant-profile' %}active{% endif %}">
+          <i>🖼️</i> Storefront & Appearance
+        </a>
+        <a href="{{ url_for('partner_promotions') }}" class="sidebar-link {% if request.path == '/partner/promotions' %}active{% endif %}">
+          <i>🏷️</i> Promotions & Deals
+        </a>
+        <a href="{{ url_for('partner_analytics') }}" class="sidebar-link {% if request.path == '/partner/analytics' %}active{% endif %}">
+          <i>📈</i> Sales Analytics
+        </a>
+      </nav>
+
+      <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm btn-block">
+          ← Back to Marketplace
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline btn-sm btn-block" style="color: var(--danger); border-color: var(--danger);">
+          🚪 Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <span>{{ message }}</span>
+              <button onclick="this.parentElement.remove()" style="font-weight: 800; color: inherit;">✕</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/partner.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

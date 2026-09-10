@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Saved Addresses | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px; max-width: 860px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary);">
+      Saved Delivery Addresses
+    </h1>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 36px;">
+    {% for addr in addresses %}
+    <div style="background: #FFF; border: 1.5px solid {% if addr.is_default %}var(--primary){% else %}var(--border-color){% endif %}; border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-xs);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+        <span style="font-weight: 800; font-size: 1.05rem; color: var(--secondary);">📍 {{ addr.label }}</span>
+        {% if addr.is_default %}
+        <span class="tag tag-primary">Default</span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">
+        {{ addr.street }}{% if addr.apartment %}, {{ addr.apartment }}{% endif %}<br>
+        {{ addr.city }}, {{ addr.state }} {{ addr.zip_code }}
+      </div>
+      {% if addr.instructions %}
+      <div style="font-size: 0.8rem; color: var(--text-light); font-style: italic;">
+        Instructions: "{{ addr.instructions }}"
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Add New Address Form -->
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px;">
+    <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 18px;">
+      Add New Address
+    </h3>
+
+    <form method="POST" action="{{ url_for('addresses_page') }}">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Address Label</label>
+          <select name="label" class="promo-input-box" style="width: 100%;">
+            <option value="Home">Home</option>
+            <option value="Work">Work</option>
+            <option value="Apartment">Apartment</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Street Address</label>
+          <input type="text" name="street" placeholder="e.g. 123 Main Street" class="promo-input-box" style="width: 100%;" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Apt / Suite</label>
+          <input type="text" name="apartment" placeholder="e.g. Apt 4B" class="promo-input-box" style="width: 100%;">
+        </div>
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">City</label>
+          <input type="text" name="city" value="New York" class="promo-input-box" style="width: 100%;" required>
+        </div>
+        <div>
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Zip Code</label>
+          <input type="text" name="zip_code" value="10001" class="promo-input-box" style="width: 100%;" required>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Delivery Instructions</label>
+        <input type="text" name="instructions" placeholder="e.g. Ring buzzer, leave on porch..." class="promo-input-box" style="width: 100%;">
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem;">
+          <input type="checkbox" name="is_default" value="1"> Set as default delivery address
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save Address</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

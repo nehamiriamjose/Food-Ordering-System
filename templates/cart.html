@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Cart | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px;">
+  <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 24px;">
+    Review Your Cart
+  </h1>
+
+  {% if cart_items %}
+  <div class="cart-page-layout">
+    <!-- Left Column: Cart Items List -->
+    <div>
+      <div class="cart-items-card">
+        <!-- Restaurant Header -->
+        <div class="cart-restaurant-header">
+          <img src="{{ restaurant.image_url }}" alt="{{ restaurant.name }}" class="cart-restaurant-logo">
+          <div>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary);">{{ restaurant.name }}</h2>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              ⏱️ Estimated Delivery: {{ restaurant.delivery_time_min }}–{{ restaurant.delivery_time_max }} mins • ${{ "%.2f"|format(restaurant.delivery_fee) }} delivery
+            </div>
+          </div>
+          <a href="{{ url_for('restaurant_detail', restaurant_id=restaurant.id) }}" class="btn btn-outline btn-sm" style="margin-left: auto;">
+            + Add more items
+          </a>
+        </div>
+
+        <!-- Items Rows -->
+        <div class="cart-items-list">
+          {% for item in cart_items %}
+          <div class="cart-item-row">
+            <img src="{{ item.item_image }}" alt="{{ item.item_name }}" style="width: 70px; height: 70px; border-radius: var(--radius-sm); object-fit: cover;">
+            
+            <div class="cart-item-details">
+              <h3 class="cart-item-title">{{ item.item_name }}</h3>
+              
+              {% if item.selected_modifiers_json and item.selected_modifiers_json != '[]' %}
+              <div class="cart-item-mods">
+                {% set mods = item.selected_modifiers_json|from_json if item.selected_modifiers_json is string else [] %}
+                {{ mods|map(attribute='name')|join(', ') }}
+              </div>
+              {% endif %}
+
+              {% if item.special_instructions %}
+              <div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic; margin-top: 4px;">
+                Note: "{{ item.special_instructions }}"
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="cart-item-actions">
+              <div class="quantity-stepper">
+                <button class="stepper-btn" onclick="updateCartItemQty({{ item.id }}, -1)">−</button>
+                <span class="stepper-value">{{ item.quantity }}</span>
+                <button class="stepper-btn" onclick="updateCartItemQty({{ item.id }}, 1)">+</button>
+              </div>
+
+              <div class="cart-item-price">
+                ${{ "%.2f"|format(item.item_total) }}
+              </div>
+
+              <button onclick="removeCartItem({{ item.id }})" style="color: var(--danger); font-size: 1.1rem; padding: 4px;" title="Remove item">
+                🗑️
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Suggested Add-ons -->
+      {% if suggested_items %}
+      <div style="margin-top: 32px;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px;">
+          You might also crave
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+          {% for s_item in suggested_items %}
+          <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <img src="{{ s_item.image_url }}" alt="{{ s_item.name }}" style="width: 50px; height: 50px; border-radius: var(--radius-xs); object-fit: cover;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.88rem; color: var(--secondary);">{{ s_item.name }}</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">${{ "%.2f"|format(s_item.price) }}</div>
+            </div>
+            <button class="btn btn-outline btn-sm btn-customize-dish" data-item-id="{{ s_item.id }}" style="padding: 4px 10px; font-weight: 800;">
+              +
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right Column: Order Summary & Checkout -->
+    <div>
+      <div class="cart-summary-card">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+          Order Summary
+        </h3>
+
+        <!-- Promo Code Input / Status -->
+        {% if applied_promo %}
+        <div class="promo-applied-tag">
+          <div>
+            <div>🎉 Promo <strong>{{ applied_promo }}</strong> Applied</div>
+            <div style="font-size: 0.78rem; color: #047857;">You saved ${{ "%.2f"|format(discount) }}!</div>
+          </div>
+          <button onclick="removeAppliedPromo()" style="color: var(--danger); font-size: 0.8rem; font-weight: 700;">Remove</button>
+        </div>
+        {% else %}
+        <div class="promo-input-group">
+          <input type="text" id="promo-code-input" class="promo-input-box" placeholder="Promo code (e.g. WELCOME50)">
+          <button id="apply-promo-btn" class="btn btn-secondary btn-sm">Apply</button>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: -12px; margin-bottom: 16px;">
+          💡 Try <strong>WELCOME50</strong>, <strong>CRAVE20</strong>, or <strong>FREESHIP</strong>
+        </div>
+        {% endif %}
+
+        <!-- Price Breakdown -->
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.92rem;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Items Subtotal</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(subtotal) }}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Delivery Fee</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(delivery_fee) }}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: var(--text-muted);">Estimated Taxes & Fees (8.875%)</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(tax + service_fee) }}</span>
+          </div>
+
+          {% if discount > 0 %}
+          <div style="display: flex; justify-content: space-between; color: var(--success); font-weight: 700;">
+            <span>Discount</span>
+            <span>-${{ "%.2f"|format(discount) }}</span>
+          </div>
+          {% endif %}
+
+          <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin-top: 10px; padding-top: 12px; border-top: 2px solid var(--border-color);">
+            <span>Estimated Total</span>
+            <span>${{ "%.2f"|format(total) }}</span>
+          </div>
+        </div>
+
+        <!-- Checkout Action Button -->
+        <div style="margin-top: 24px;">
+          {% if subtotal < restaurant.min_order %}
+          <div class="alert alert-warning" style="font-size: 0.82rem; margin-bottom: 12px;">
+            ⚠️ Add ${{ "%.2f"|format(restaurant.min_order - subtotal) }} more to meet minimum order of ${{ "%.2f"|format(restaurant.min_order) }}.
+          </div>
+          <button class="btn btn-secondary btn-block btn-lg" disabled style="opacity: 0.6; cursor: not-allowed;">
+            Minimum Order Required
+          </button>
+          {% else %}
+          <a href="{{ url_for('checkout') }}" class="btn btn-primary btn-block btn-lg" id="proceed-to-checkout-btn">
+            Proceed to Checkout →
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <!-- Empty Cart State -->
+  <div class="empty-state">
+    <div class="empty-icon">🛒</div>
+    <h2 class="empty-title">Your cart is empty</h2>
+    <p class="empty-desc">Explore great local kitchens, add delicious meals with custom options, and get them delivered to your door.</p>
+    <a href="{{ url_for('restaurants_list') }}" class="btn btn-primary btn-lg">Browse Restaurants</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

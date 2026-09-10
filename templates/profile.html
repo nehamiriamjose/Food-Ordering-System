@@ -1,0 +1,668 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ user.name }} | CraveCart Profile{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px; max-width: 1080px;">
+  <!-- Profile Header & Stats Ribbon -->
+  <div style="background: linear-gradient(135deg, #111827 0%, #1F2933 60%, #374151 100%); color: #FFF; border-radius: var(--radius-xl); padding: 32px; margin-bottom: 28px; box-shadow: var(--shadow-lg); display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center;">
+    <div class="avatar-wrapper-interactive" onclick="triggerAvatarUpload()" title="Click to upload/change profile photo">
+      {% if user.avatar_url %}
+        <img id="profile-hero-avatar-img" src="{{ user.avatar_url }}" alt="{{ user.name }}" class="user-avatar-lg">
+      {% else %}
+        <div id="profile-hero-avatar-placeholder" class="user-avatar-lg user-avatar-placeholder role-{{ user.role }}">
+          <span>{{ (user.name|trim)[0]|upper if user.name else '?' }}</span>
+        </div>
+      {% endif %}
+      <div class="avatar-edit-badge" title="Upload new photo">📷</div>
+    </div>
+    
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+        <h1 style="font-size: 1.6rem; font-weight: 800; color: #FFF;">{{ user.name }}</h1>
+        <span class="tag tag-warning" style="font-weight: 800;">⭐ {{ user.member_tier or 'Gold VIP' }}</span>
+      </div>
+      <p style="color: #9CA3AF; font-size: 0.88rem;">{{ user.email }} • Member since {{ user.created_at[:10] if user.created_at else '2026' }}</p>
+    </div>
+
+    <!-- Loyalty Rewards Points Pill -->
+    <div style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: var(--radius-lg); padding: 14px 20px; text-align: center;">
+      <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--accent); font-weight: 800; letter-spacing: 0.5px;">CravePoints Balance</div>
+      <div style="font-size: 1.6rem; font-weight: 800; color: #FFF;">✨ {{ user.loyalty_points or 250 }} pts</div>
+    </div>
+  </div>
+
+  <!-- Profile Quick Stat Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; display: flex; align-items: center; gap: 14px;">
+      <span style="font-size: 2rem;">📦</span>
+      <div>
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Orders</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: var(--secondary);">{{ order_count }} Placed</div>
+      </div>
+    </div>
+
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; display: flex; align-items: center; gap: 14px;">
+      <span style="font-size: 2rem;">💳</span>
+      <div>
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Spent</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: var(--secondary);">${{ "%.2f"|format(total_spent) }}</div>
+      </div>
+    </div>
+
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px; display: flex; align-items: center; gap: 14px;">
+      <span style="font-size: 2rem;">❤️</span>
+      <div>
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Saved Favorites</div>
+        <div style="font-size: 1.35rem; font-weight: 800; color: var(--secondary);">{{ fav_count }} Dishes & Places</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Navigation Tabs -->
+  <div style="display: flex; gap: 10px; border-bottom: 2px solid var(--border-color); margin-bottom: 28px;">
+    <button class="btn btn-ghost profile-tab-btn active" data-tab="ptab-orders" style="border-radius: 0; border-bottom: 3px solid var(--primary); font-weight: 800;">
+      📦 Order History & Progress
+    </button>
+    <button class="btn btn-ghost profile-tab-btn" data-tab="ptab-addresses" style="border-radius: 0; font-weight: 700;">
+      📍 Saved Addresses
+    </button>
+    <button class="btn btn-ghost profile-tab-btn" data-tab="ptab-payments" style="border-radius: 0; font-weight: 700;">
+      💳 Cards & UPI
+    </button>
+    <button class="btn btn-ghost profile-tab-btn" data-tab="ptab-account" style="border-radius: 0; font-weight: 700;">
+      ⚙️ Personal Settings
+    </button>
+  </div>
+
+  <!-- TAB 1: ORDER HISTORY WITH 1-CLICK REORDER -->
+  <div class="profile-tab-panel active" id="ptab-orders">
+    {% if orders %}
+    <div style="display: flex; flex-direction: column; gap: 18px;">
+      {% for o in orders %}
+      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 22px; transition: var(--transition);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 48px; height: 48px; border-radius: var(--radius-md); object-fit: cover;">
+            <div>
+              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--secondary);">{{ o.restaurant_name }}</h3>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">
+                Order #{{ o.order_number }} • {{ o.created_at[:16] }}
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px;">
+            {% if o.status == 'delivered' %}
+            <span class="tag tag-success">Delivered</span>
+            {% elif o.status in ('on_the_way', 'preparing', 'placed', 'confirmed') %}
+            <span class="tag tag-primary">Live ({{ o.status|replace('_', ' ')|capitalize }})</span>
+            {% else %}
+            <span class="tag tag-secondary">{{ o.status|capitalize }}</span>
+            {% endif %}
+            <strong style="font-size: 1.15rem; color: var(--secondary);">${{ "%.2f"|format(o.total) }}</strong>
+          </div>
+        </div>
+
+        <!-- Items Summary List -->
+        <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; padding: 10px 14px; background: var(--bg-muted); border-radius: var(--radius-md);">
+          {% for item in o.order_items %}
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>{{ item.quantity }}x {{ item.name }} {% if item.modifiers_summary and item.modifiers_summary != 'Standard' %}<small>({{ item.modifiers_summary }})</small>{% endif %}</span>
+            <span style="font-weight: 700;">${{ "%.2f"|format(item.total_price) }}</span>
+          </div>
+          {% endfor %}
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
+            Paid with: <strong>{{ o.payment_method }}</strong>
+          </div>
+        </div>
+
+        <!-- Actions Row -->
+        <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline btn-sm reorder-btn" data-order="{{ o.order_number }}">
+            ⚡ Re-Order Items
+          </button>
+          <a href="{{ url_for('order_tracking', order_number=o.order_number) }}" class="btn btn-secondary btn-sm">
+            📍 Track / Receipt
+          </a>
+          {% if o.status == 'delivered' %}
+          <button type="button" class="btn btn-primary btn-sm open-review-btn" data-order="{{ o.order_number }}" data-rest="{{ o.restaurant_name }}">
+            ⭐ Rate & Review
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 48px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 12px;">🍽️</div>
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">No orders placed yet</h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">Explore our culinary kitchens and place your first craving feast today!</p>
+      <a href="{{ url_for('restaurants_list') }}" class="btn btn-primary btn-lg">Browse Restaurants</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- TAB 2: SAVED ADDRESSES -->
+  <div class="profile-tab-panel" id="ptab-addresses" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <h3 style="font-size: 1.2rem; font-weight: 800;">Saved Delivery Locations</h3>
+      <a href="{{ url_for('addresses_page') }}" class="btn btn-primary btn-sm">+ Add New Address</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+      {% for addr in addresses %}
+      <div style="background: #FFF; border: 1.5px solid {% if addr.is_default %}var(--primary){% else %}var(--border-color){% endif %}; border-radius: var(--radius-lg); padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 800; font-size: 1rem; color: var(--secondary);">📍 {{ addr.label }}</div>
+          {% if addr.is_default %}
+          <span class="tag tag-primary">Default</span>
+          {% endif %}
+        </div>
+        <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 14px;">
+          {{ addr.street }}{% if addr.apartment %}, {{ addr.apartment }}{% endif %}<br>
+          {{ addr.city }}, {{ addr.state }} {{ addr.zip_code }}
+        </p>
+        <div style="display: flex; gap: 8px;">
+          {% if not addr.is_default %}
+          <button type="button" class="btn btn-outline btn-sm set-default-addr-btn" data-id="{{ addr.id }}">Set Default</button>
+          {% endif %}
+          <button type="button" class="btn btn-ghost btn-sm delete-addr-btn" data-id="{{ addr.id }}" style="color: var(--danger); margin-left: auto;">Delete</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- TAB 3: SAVED PAYMENT METHODS & UPI -->
+  <div class="profile-tab-panel" id="ptab-payments" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+      <h3 style="font-size: 1.2rem; font-weight: 800;">Saved Cards & UPI Handles</h3>
+      <a href="{{ url_for('payment_methods_page') }}" class="btn btn-primary btn-sm">+ Add Payment Method</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+      {% for pm in payment_methods %}
+      <div style="background: #FFF; border: 1.5px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 800;">
+            <span>{% if pm.type == 'card' %}💳{% elif pm.type == 'upi' %}📱{% else %}🏦{% endif %}</span>
+            <span>{% if pm.type == 'card' %}{{ pm.card_brand }} ending in {{ pm.last4 }}{% elif pm.type == 'upi' %}{{ pm.upi_id }}{% else %}{{ pm.bank_name }}{% endif %}</span>
+          </div>
+          {% if pm.is_default %}
+          <span class="tag tag-success">Active</span>
+          {% endif %}
+        </div>
+        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px;">
+          {% if pm.type == 'card' %}Expires {{ pm.exp_month }}/{{ pm.exp_year }}{% elif pm.type == 'upi' %}Instant 1-Click Verification{% else %}Bank Direct Auth{% endif %}
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm delete-pm-btn" data-id="{{ pm.id }}" style="color: var(--danger);">Remove</button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- TAB 4: PERSONAL SETTINGS -->
+  <div class="profile-tab-panel" id="ptab-account" style="display: none;">
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 28px; max-width: 600px;">
+      <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+        Personal Information & Profile Photo
+      </h3>
+
+      <!-- Profile Picture Upload & Management Card -->
+      <div class="avatar-upload-card">
+        <div class="avatar-preview-wrap">
+          {% if user.avatar_url %}
+            <img id="preview-avatar-img" src="{{ user.avatar_url }}" alt="{{ user.name }}" class="user-avatar-lg">
+          {% else %}
+            <div id="preview-avatar-placeholder" class="user-avatar-lg user-avatar-placeholder role-{{ user.role }}">
+              <span>{{ (user.name|trim)[0]|upper if user.name else '?' }}</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="avatar-upload-info">
+          <h4>Profile Picture</h4>
+          <p id="avatar-status-desc">
+            {% if user.avatar_url %}
+              Custom profile photo active. You can replace or remove it.
+            {% else %}
+              Unknown avatar placeholder active. Upload your photo below!
+            {% endif %}
+          </p>
+          <div class="avatar-actions-row">
+            <input type="file" id="direct-avatar-file-input" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;" onchange="handleDirectFileUpload(this)">
+            <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('direct-avatar-file-input').click()">
+              📁 Upload Photo
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-remove-avatar-action" onclick="handleRemoveAvatar()" style="color: var(--danger); {% if not user.avatar_url %}display: none;{% endif %}">
+              🗑️ Remove Photo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Full Name</label>
+          <input type="text" name="name" value="{{ user.name }}" class="promo-input-box" style="width: 100%;" required>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Email Address</label>
+          <input type="email" value="{{ user.email }}" class="promo-input-box" style="width: 100%; background: var(--bg-muted);" disabled>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Phone Number</label>
+          <input type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="(555) 000-0000" class="promo-input-box" style="width: 100%;">
+        </div>
+
+        {% if user.role == 'courier' %}
+        <div style="background: var(--bg-muted); border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <span>🛵</span> Courier Vehicle & Fleet Details
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 6px;">Vehicle Type</label>
+              <select name="vehicle_type" class="promo-input-box" style="width: 100%;">
+                <option value="Motorcycle" {% if courier and courier.vehicle_type == 'Motorcycle' %}selected{% endif %}>🛵 Motorcycle / Scooter</option>
+                <option value="Bicycle" {% if courier and courier.vehicle_type == 'Bicycle' %}selected{% endif %}>🚴 Bicycle / E-Bike</option>
+                <option value="Car" {% if courier and courier.vehicle_type == 'Car' %}selected{% endif %}>🚗 Car / Sedan</option>
+                <option value="Electric Scooter" {% if courier and courier.vehicle_type == 'Electric Scooter' %}selected{% endif %}>🛴 E-Scooter</option>
+                <option value="Walker / Foot" {% if courier and courier.vehicle_type == 'Walker / Foot' %}selected{% endif %}>🚶 Walker (Downtown)</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 6px;">License Plate / ID</label>
+              <input type="text" name="vehicle_plate" value="{{ courier.vehicle_plate if courier else '' }}" placeholder="e.g. NY-7890" class="promo-input-box" style="width: 100%;">
+            </div>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.78rem;">Vehicle information is visible to restaurants and customers on the live tracking map.</small>
+        </div>
+        {% endif %}
+
+        <div style="margin-bottom: 24px;">
+          <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Or Paste Image URL</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="url" id="custom-avatar-url-input" name="avatar_url" value="{{ user.avatar_url or '' }}" placeholder="https://example.com/avatar.jpg" class="promo-input-box" style="flex: 1;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyAvatarUrl()">Apply URL</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="submit" class="btn btn-primary">Save Profile</button>
+          <a href="{{ url_for('logout') }}" class="btn btn-outline" style="color: var(--danger); border-color: var(--danger-light);">Sign Out</a>
+        </div>
+      </form>
+
+      <!-- Change Password Card -->
+      <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+          🔒 Security & Password
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">
+          Ensure your account is using a long, random password to stay secure.
+        </p>
+
+        <form id="change-password-form" onsubmit="handleChangePassword(event)">
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Current Password</label>
+            <input type="password" id="cp-current" class="promo-input-box" style="width: 100%;" placeholder="Enter current password" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+            <div>
+              <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">New Password</label>
+              <input type="password" id="cp-new" class="promo-input-box" style="width: 100%;" placeholder="Min. 6 characters" required minlength="6">
+            </div>
+            <div>
+              <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Confirm New Password</label>
+              <input type="password" id="cp-confirm" class="promo-input-box" style="width: 100%;" placeholder="Re-type new password" required minlength="6">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-secondary" id="cp-submit-btn">
+            Update Password
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review & Rating Modal -->
+  <div class="deals-drawer-backdrop" id="review-modal">
+    <div class="deals-drawer-container" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary);" id="review-rest-title">Rate Order</h3>
+        <button class="modal-close-btn" id="close-review-modal-btn">✕</button>
+      </div>
+
+      <input type="hidden" id="review-order-number">
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 10px;">Select Rating</label>
+        <div style="font-size: 2rem; display: flex; justify-content: center; gap: 8px; cursor: pointer;" id="star-rating-row">
+          <span data-star="1" class="star-rating-star">⭐</span>
+          <span data-star="2" class="star-rating-star">⭐</span>
+          <span data-star="3" class="star-rating-star">⭐</span>
+          <span data-star="4" class="star-rating-star">⭐</span>
+          <span data-star="5" class="star-rating-star">⭐</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Share your dining review:</label>
+        <textarea id="review-comment-input" class="special-instructions-input" style="height: 90px;" placeholder="How was the food temperature, packaging, and flavor?"></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="submit-review-btn">
+        Submit Review
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Tab Switcher
+  const pTabBtns = document.querySelectorAll('.profile-tab-btn');
+  const pTabPanels = document.querySelectorAll('.profile-tab-panel');
+
+  pTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      pTabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.borderBottom = 'none';
+      });
+      pTabPanels.forEach(p => p.style.display = 'none');
+
+      btn.classList.add('active');
+      btn.style.borderBottom = '3px solid var(--primary)';
+      const target = document.getElementById(btn.dataset.tab);
+      if (target) target.style.display = 'block';
+    });
+  });
+
+  // Reorder 1-Click
+  document.querySelectorAll('.reorder-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ordNum = btn.dataset.order;
+      btn.disabled = true;
+      btn.textContent = 'Adding to Cart...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/reorder`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('Order items copied to cart!', 'success');
+          setTimeout(() => window.location.href = data.redirect_url, 400);
+        } else {
+          window.showToast(data.message, 'error');
+        }
+      } catch (err) {
+        window.showToast('Could not reorder', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Re-Order Items';
+      }
+    });
+  });
+
+  // Review Modal Logic
+  let selectedStarRating = 5;
+  const reviewModal = document.getElementById('review-modal');
+  const closeRevBtn = document.getElementById('close-review-modal-btn');
+  const submitRevBtn = document.getElementById('submit-review-btn');
+  const starRow = document.querySelectorAll('.star-rating-star');
+
+  document.querySelectorAll('.open-review-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('review-order-number').value = btn.dataset.order;
+      document.getElementById('review-rest-title').textContent = `Rate ${btn.dataset.rest}`;
+      reviewModal.classList.add('active');
+    });
+  });
+
+  if (closeRevBtn) {
+    closeRevBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
+  }
+
+  starRow.forEach(star => {
+    star.addEventListener('click', () => {
+      selectedStarRating = parseInt(star.dataset.star);
+      starRow.forEach((s, i) => {
+        s.style.opacity = i < selectedStarRating ? '1' : '0.3';
+      });
+    });
+  });
+
+  if (submitRevBtn) {
+    submitRevBtn.addEventListener('click', async () => {
+      const ordNum = document.getElementById('review-order-number').value;
+      const comment = document.getElementById('review-comment-input').value.trim();
+
+      submitRevBtn.disabled = true;
+      submitRevBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: selectedStarRating, comment: comment })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('Review submitted successfully!', 'success');
+          reviewModal.classList.remove('active');
+        } else {
+          window.showToast(data.message, 'error');
+        }
+      } catch (err) {
+        window.showToast('Error posting review', 'error');
+      } finally {
+        submitRevBtn.disabled = false;
+        submitRevBtn.textContent = 'Submit Review';
+      }
+    });
+  }
+
+  // Address Actions
+  document.querySelectorAll('.set-default-addr-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await fetch(`/api/addresses/${btn.dataset.id}/default`, { method: 'POST' });
+      window.showToast('Default address updated!', 'success');
+      setTimeout(() => window.location.reload(), 400);
+    });
+  });
+
+  document.querySelectorAll('.delete-addr-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const confirmed = await window.showConfirmDialog({
+        title: 'Delete Delivery Address?',
+        message: 'Are you sure you want to remove this saved delivery address from your profile?',
+        confirmText: 'Yes, Delete',
+        cancelText: 'Keep Address',
+        type: 'danger',
+        icon: '📍'
+      });
+      if (confirmed) {
+        await fetch(`/api/addresses/${btn.dataset.id}/delete`, { method: 'POST' });
+        window.showToast('Address deleted', 'info');
+        setTimeout(() => window.location.reload(), 400);
+      }
+    });
+  });
+
+  // Payment Delete Action
+  document.querySelectorAll('.delete-pm-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const confirmed = await window.showConfirmDialog({
+        title: 'Remove Payment Method?',
+        message: 'Are you sure you want to remove this saved payment method from your account?',
+        confirmText: 'Yes, Remove',
+        cancelText: 'Keep Card',
+        type: 'danger',
+        icon: '💳'
+      });
+      if (confirmed) {
+        await fetch(`/api/payment-methods/${btn.dataset.id}/delete`, { method: 'POST' });
+        window.showToast('Payment method removed', 'info');
+        setTimeout(() => window.location.reload(), 400);
+      }
+    });
+  });
+});
+
+async function handleChangePassword(e) {
+  e.preventDefault();
+  const current = document.getElementById('cp-current').value;
+  const newPass = document.getElementById('cp-new').value;
+  const confirmPass = document.getElementById('cp-confirm').value;
+  const btn = document.getElementById('cp-submit-btn');
+
+  if (newPass !== confirmPass) {
+    window.showToast('New passwords do not match!', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+
+  try {
+    const res = await fetch('/api/profile/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_password: current,
+        new_password: newPass,
+        confirm_password: confirmPass
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      window.showToast(data.message, 'success');
+      document.getElementById('change-password-form').reset();
+    } else {
+      window.showToast(data.message || 'Error updating password', 'error');
+    }
+  } catch (err) {
+    window.showToast('Network error while updating password', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+  }
+}
+
+function triggerAvatarUpload() {
+  const accountTabBtn = document.querySelector('[data-tab="ptab-account"]');
+  if (accountTabBtn) accountTabBtn.click();
+  document.getElementById('direct-avatar-file-input').click();
+}
+
+async function handleDirectFileUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+
+  if (file.size > 10 * 1024 * 1024) {
+    if (window.showToast) window.showToast('Image file size must be under 10MB', 'error');
+    return;
+  }
+
+  // Instant local preview for immediate visual feedback
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const previewImg = document.getElementById('preview-avatar-img');
+    const previewPlaceholder = document.getElementById('preview-avatar-placeholder');
+    const heroImg = document.getElementById('profile-hero-avatar-img');
+    const heroPlaceholder = document.getElementById('profile-hero-avatar-placeholder');
+
+    if (previewImg) {
+      previewImg.src = e.target.result;
+      previewImg.style.display = 'inline-flex';
+    } else if (previewPlaceholder) {
+      previewPlaceholder.innerHTML = `<img src="${e.target.result}" alt="Avatar Preview" class="user-avatar-lg" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    }
+
+    if (heroImg) {
+      heroImg.src = e.target.result;
+      heroImg.style.display = 'inline-flex';
+    } else if (heroPlaceholder) {
+      heroPlaceholder.innerHTML = `<img src="${e.target.result}" alt="Hero Avatar Preview" class="user-avatar-lg" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    }
+  };
+  reader.readAsDataURL(file);
+
+  const formData = new FormData();
+  formData.append('avatar_file', file);
+
+  if (window.showToast) window.showToast('Uploading profile picture...', 'info');
+
+  try {
+    const res = await fetch('/api/profile/upload-avatar', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast(data.message, 'success');
+      setTimeout(() => window.location.reload(), 450);
+    } else {
+      if (window.showToast) window.showToast(data.message || 'Upload failed', 'error');
+    }
+  } catch (err) {
+    if (window.showToast) window.showToast('Network error while uploading avatar', 'error');
+  }
+}
+
+async function handleRemoveAvatar() {
+  const confirmed = await window.showConfirmDialog({
+    title: 'Remove Profile Picture?',
+    message: 'Are you sure you want to remove your uploaded photo and restore the default CraveCart avatar?',
+    confirmText: 'Yes, Remove Photo',
+    cancelText: 'Keep Photo',
+    type: 'warning',
+    icon: '👤'
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/profile/remove-avatar', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast(data.message, 'info');
+      setTimeout(() => window.location.reload(), 400);
+    }
+  } catch (err) {
+    if (window.showToast) window.showToast('Network error', 'error');
+  }
+}
+
+async function applyAvatarUrl() {
+  const urlVal = document.getElementById('custom-avatar-url-input').value.trim();
+  if (!urlVal) return;
+  const formData = new FormData();
+  formData.append('avatar_url', urlVal);
+
+  try {
+    const res = await fetch('/api/profile/upload-avatar', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (window.showToast) window.showToast(data.message, 'success');
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      if (window.showToast) window.showToast(data.message || 'Invalid image URL', 'error');
+    }
+  } catch (err) {
+    if (window.showToast) window.showToast('Network error', 'error');
+  }
+}
+</script>
+{% endblock %}

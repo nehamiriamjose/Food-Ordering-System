@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Order Confirmed | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 40px; padding-bottom: 40px;">
+  <div class="confirmation-card">
+    <div class="celebration-icon-box">✓</div>
+
+    <div class="tag tag-success" style="font-size: 0.85rem; padding: 6px 16px; margin-bottom: 12px;">
+      Order Placed Successfully!
+    </div>
+
+    <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+      Thank you for your order!
+    </h1>
+    <p style="color: var(--text-muted); font-size: 1.05rem; margin-bottom: 24px;">
+      Order <strong>{{ order.order_number }}</strong> has been dispatched to <strong>{{ restaurant.name }}</strong>.
+    </p>
+
+    <!-- ETA Card -->
+    <div style="background: var(--primary-light); border: 1.5px solid rgba(244, 81, 58, 0.3); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 30px; display: flex; align-items: center; justify-content: space-around;">
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">Estimated Arrival</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: var(--secondary);">{{ order.estimated_delivery_time }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">Payment</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--secondary);">${{ "%.2f"|format(order.total) }} ({{ order.payment_method }})</div>
+      </div>
+    </div>
+
+    <!-- Receipt Summary -->
+    <div style="text-align: left; background: var(--bg-muted); border-radius: var(--radius-md); padding: 20px; margin-bottom: 30px; font-size: 0.92rem;">
+      <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 14px; color: var(--secondary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        Order Details from {{ restaurant.name }}
+      </h3>
+
+      <div style="margin-bottom: 14px;">
+        {% for item in items %}
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <div>
+            <strong>{{ item.quantity }}x</strong> {{ item.name }}
+            {% if item.modifiers_summary and item.modifiers_summary != 'Standard' %}
+            <div style="font-size: 0.78rem; color: var(--text-muted);">{{ item.modifiers_summary }}</div>
+            {% endif %}
+          </div>
+          <span>${{ "%.2f"|format(item.total_price) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="border-top: 1px dashed var(--border-color); padding-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+        <div style="margin-bottom: 4px;">📍 <strong>Deliver to:</strong> {{ address.street }}, {{ address.city }}</div>
+        <div>📝 <strong>Instructions:</strong> {{ order.delivery_instructions }}</div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+      <a href="{{ url_for('order_tracking', order_number=order.order_number) }}" class="btn btn-primary btn-lg" style="padding: 14px 32px;">
+        🚀 Track Live Order Status
+      </a>
+      <a href="{{ url_for('index') }}" class="btn btn-outline btn-lg">
+        🍽️ Continue Browsing
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Saved Favorites | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px;">
+  <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 24px;">
+    Your Favorites ❤️
+  </h1>
+
+  <!-- Favorite Restaurants Section -->
+  <section style="margin-bottom: 48px;">
+    <h2 class="section-title" style="margin-bottom: 18px;">Saved Restaurants ({{ favorite_restaurants|length }})</h2>
+
+    {% if favorite_restaurants %}
+    <div class="restaurants-grid">
+      {% for rest in favorite_restaurants %}
+      <div class="restaurant-card">
+        <div class="card-image-wrap">
+          <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+          <button class="card-favorite-btn active" data-restaurant-id="{{ rest.id }}" title="Remove from favorites">
+            ❤️
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="card-header-row">
+            <h3 class="restaurant-title">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+            </h3>
+            <div class="rating-badge">⭐ {{ rest.rating }}</div>
+          </div>
+          <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.price_level }}</p>
+
+          <div class="card-meta-row">
+            <div class="meta-item">⏱️ {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</div>
+            <div class="meta-item">🚴 ${{ "%.2f"|format(rest.delivery_fee) }}</div>
+            <div class="meta-item" style="margin-left: auto;">
+              <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-primary btn-sm">Order</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 30px; text-align: center; color: var(--text-muted);">
+      You haven't saved any restaurants yet. Click the heart icon on any restaurant card to save it!
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Favorite Dishes Section -->
+  <section style="margin-bottom: 48px;">
+    <h2 class="section-title" style="margin-bottom: 18px;">Favorite Dishes ({{ favorite_dishes|length }})</h2>
+
+    {% if favorite_dishes %}
+    <div class="menu-items-grid">
+      {% for dish in favorite_dishes %}
+      <div class="menu-item-card" data-item-id="{{ dish.id }}">
+        <div class="item-info-col">
+          <div style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">
+            From {{ dish.restaurant_name }}
+          </div>
+          <h3 class="item-name">{{ dish.name }}</h3>
+          <p class="item-desc">{{ dish.description }}</p>
+          <div class="item-price">${{ "%.2f"|format(dish.price) }}</div>
+        </div>
+        <div class="item-image-col">
+          <img src="{{ dish.image_url }}" alt="{{ dish.name }}" class="item-img">
+          <button class="item-add-btn btn-customize-dish" data-item-id="{{ dish.id }}">
+            + ADD
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

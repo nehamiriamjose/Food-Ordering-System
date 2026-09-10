@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CraveCart | Good food, right when you want it.{% endblock %}</title>
+  <meta name="description" content="Order delicious food from your favorite local restaurants with CraveCart. Fast delivery, fresh ingredients, and real-time live tracking.">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/restaurant.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/cart-checkout.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Announcement Flash Deal Marquee Ticker -->
+  <div class="top-announcement-ticker" id="top-flash-ticker">
+    <div class="ticker-wrap">
+      <div class="ticker-move">
+        <span class="ticker-item">
+          <span class="ticker-tag">🔥 Flash Deal</span>
+          <span>Get 50% OFF your feast today with code <strong>WELCOME50</strong></span>
+        </span>
+        <span class="ticker-item">
+          <span class="ticker-tag">🛵 Zero Delivery Fee</span>
+          <span>Free delivery on orders over $15 with code <strong>FREESHIP</strong></span>
+        </span>
+        <span class="ticker-item">
+          <span class="ticker-tag">🥤 Happy Hour</span>
+          <span>Buy 1 Get 1 on all Handcrafted Drinks, Boba & Artisan Shakes!</span>
+        </span>
+        <span class="ticker-item">
+          <span class="ticker-tag">⭐ CravePoints</span>
+          <span>Earn 10x Loyalty Rewards on every order today!</span>
+        </span>
+        <span class="ticker-item">
+          <span class="ticker-tag">🔥 Flash Deal</span>
+          <span>Get 50% OFF your feast today with code <strong>WELCOME50</strong></span>
+        </span>
+        <span class="ticker-item">
+          <span class="ticker-tag">🛵 Zero Delivery Fee</span>
+          <span>Free delivery on orders over $15 with code <strong>FREESHIP</strong></span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Sticky Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      
+      <!-- Left: Brand Logo & Delivery Location -->
+      <div class="header-left-group">
+        <a href="{{ url_for('index') }}" class="brand-logo" id="header-logo-link">
+          <div class="logo-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+              <line x1="6" y1="1" x2="6" y2="4"></line>
+              <line x1="10" y1="1" x2="10" y2="4"></line>
+              <line x1="14" y1="1" x2="14" y2="4"></line>
+            </svg>
+          </div>
+          <div class="brand-name-wrap">
+            <div class="brand-name">Crave<span>Cart</span></div>
+            <div class="brand-tagline">Gourmet Delivery</div>
+          </div>
+        </a>
+
+        <!-- Enhanced 2-Line Location Selector -->
+        <button class="location-btn" id="location-selector-btn" onclick="openLocationModal()" title="Change delivery location" type="button">
+          <span class="loc-pin-icon">📍</span>
+          <div class="loc-text-col">
+            <span class="loc-sublabel">DELIVER TO</span>
+            <span class="loc-value" id="current-location-text">{{ current_location }}</span>
+          </div>
+          <span class="loc-chevron">▾</span>
+        </button>
+      </div>
+
+      <!-- Center: Expanded Global Search Bar -->
+      <div class="header-search-wrap">
+        <form action="{{ url_for('search') }}" method="GET" class="search-input-box" id="global-search-form">
+          <span class="search-icon-btn">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input type="text" name="q" class="global-search-input" id="global-search-input" placeholder="Search dishes, cuisines, or restaurants..." autocomplete="off">
+          <kbd class="search-kbd-shortcut">⌘K</kbd>
+        </form>
+      </div>
+
+      <!-- Right: Navigation Links & Actions -->
+      <nav class="header-nav">
+        <!-- Deals & Offers -->
+        <a href="{{ url_for('offers') }}" class="nav-link nav-deal-link {% if request.path == '/offers' %}active{% endif %}">
+          <span class="deal-pill-icon">🔥</span>
+          <span class="nav-text">Offers</span>
+          <span class="deal-badge-mini">50% OFF</span>
+        </a>
+
+        <!-- Partner Links Dropdown (Sleek, No Wrapping) -->
+        {% if not current_user or current_user.role == 'customer' %}
+        <div class="nav-dropdown-wrap" id="partner-nav-dropdown">
+          <button type="button" class="nav-link nav-dropdown-trigger" id="partner-menu-trigger">
+            <span>🤝</span>
+            <span>Partner</span>
+            <span class="dropdown-arrow">▾</span>
+          </button>
+          <div class="nav-dropdown-flyout" id="partner-menu-flyout">
+            <a href="{{ url_for('login', role='restaurant') }}" class="dropdown-flyout-item">
+              <div class="flyout-icon partner-color">🍳</div>
+              <div class="flyout-text">
+                <div class="flyout-title">For Restaurants</div>
+                <div class="flyout-desc">Open Kitchen Portal & Menus</div>
+              </div>
+            </a>
+            <a href="{{ url_for('login', role='courier') }}" class="dropdown-flyout-item">
+              <div class="flyout-icon courier-color">🛵</div>
+              <div class="flyout-text">
+                <div class="flyout-title">Deliver with CraveCart</div>
+                <div class="flyout-desc">Driver Portal & Runs</div>
+              </div>
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Access if logged in as Partner / Courier -->
+        {% if current_user and current_user.role == 'restaurant' %}
+        <a href="{{ url_for('partner_overview') }}" class="nav-badge-link badge-partner" title="Open Restaurant Partner Dashboard">
+          <span>🍳</span> Kitchen Portal
+        </a>
+        {% elif current_user and current_user.role == 'courier' %}
+        <a href="{{ url_for('courier_overview') }}" class="nav-badge-link badge-courier" title="Open Courier Partner Dashboard">
+          <span>🛵</span> Courier Portal
+        </a>
+        {% endif %}
+
+        <!-- Help Center Link -->
+        <a href="{{ url_for('help_center') }}" class="nav-link nav-help-link {% if request.path == '/help' %}active{% endif %}">
+          <span>💬</span>
+          <span class="nav-text">Help</span>
+        </a>
+
+        <!-- Favorites Icon (Customers only) -->
+        {% if current_user and current_user.role == 'customer' %}
+        <a href="{{ url_for('favorites') }}" class="nav-icon-btn" title="Saved Favorites">
+          <span>❤️</span>
+          <span class="badge-count" id="header-fav-count" style="{% if fav_count == 0 %}display:none;{% endif %}">{{ fav_count }}</span>
+        </a>
+        {% endif %}
+
+        <!-- Sleek Shopping Cart Button -->
+        <a href="{{ url_for('cart') }}" class="nav-cart-btn" id="header-cart-btn" title="Shopping Cart">
+          <div class="cart-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            <span class="cart-count-badge" id="header-cart-count" style="{% if cart_count == 0 %}display:none;{% endif %}">{{ cart_count }}</span>
+          </div>
+          <span class="cart-label">Cart</span>
+        </a>
+
+        <!-- User Profile Dropdown / Sign In -->
+        {% if current_user %}
+        <div class="user-dropdown-wrap" id="user-dropdown-wrap">
+          <button type="button" class="user-menu-btn" id="user-menu-trigger" aria-haspopup="true" aria-expanded="false" title="Account Menu">
+            {% if current_user.avatar_url %}
+            <img src="{{ current_user.avatar_url }}" class="user-avatar-sm" alt="{{ current_user.name }}">
+            {% else %}
+            <div class="user-avatar-sm user-avatar-placeholder role-{{ current_user.role }}">
+              <span>{{ (current_user.name|trim)[0]|upper if current_user.name else '?' }}</span>
+            </div>
+            {% endif %}
+            <div class="user-meta-header-wrap">
+              <span class="user-name-label">{{ current_user.name.split(' ')[0] }}</span>
+              <span class="user-role-pill role-{{ current_user.role }}">{{ current_user.role|capitalize }}</span>
+            </div>
+            <span class="user-arrow-icon">▾</span>
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div class="user-dropdown-menu" id="user-dropdown-menu">
+            <div class="user-dropdown-header">
+              <div class="dropdown-user-name">{{ current_user.name }}</div>
+              <div class="dropdown-user-email">{{ current_user.email }}</div>
+              <div class="dropdown-user-tier">
+                <span class="tier-badge">
+                  {% if current_user.role == 'restaurant' %}
+                    🍳 Partner Kitchen
+                  {% elif current_user.role == 'courier' %}
+                    🛵 Active Fleet
+                  {% else %}
+                    ⭐ {{ current_user.member_tier or 'Gold VIP' }}
+                  {% endif %}
+                </span>
+                {% if current_user.role == 'customer' %}
+                <span class="points-badge">✨ {{ current_user.loyalty_points or 0 }} pts</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <nav class="dropdown-links">
+              {% if current_user.role == 'restaurant' %}
+              <a href="{{ url_for('partner_overview') }}" class="dropdown-item dropdown-highlight">
+                <span>🍳</span> Partner Kitchen Portal
+              </a>
+              <a href="{{ url_for('partner_orders') }}" class="dropdown-item">
+                <span>📋</span> Live Order Tickets
+              </a>
+              <a href="{{ url_for('partner_menu') }}" class="dropdown-item">
+                <span>📜</span> Menu Manager
+              </a>
+              {% elif current_user.role == 'courier' %}
+              <a href="{{ url_for('courier_overview') }}" class="dropdown-item dropdown-highlight">
+                <span>🛵</span> Courier Portal
+              </a>
+              <a href="{{ url_for('courier_deliveries') }}" class="dropdown-item">
+                <span>📦</span> Active Deliveries
+              </a>
+              <a href="{{ url_for('courier_earnings') }}" class="dropdown-item">
+                <span>💵</span> Earnings & Payouts
+              </a>
+              {% else %}
+              <a href="{{ url_for('profile') }}" class="dropdown-item">
+                <span>👤</span> My Profile & Settings
+              </a>
+              <a href="{{ url_for('orders_list') }}" class="dropdown-item">
+                <span>📦</span> My Orders & Receipts
+              </a>
+              <a href="{{ url_for('favorites') }}" class="dropdown-item">
+                <span>❤️</span> Saved Favorites
+              </a>
+              <a href="{{ url_for('addresses_page') }}" class="dropdown-item">
+                <span>📍</span> Delivery Addresses
+              </a>
+              <a href="{{ url_for('payment_methods_page') }}" class="dropdown-item">
+                <span>💳</span> Payment Methods
+              </a>
+              {% endif %}
+            </nav>
+
+            <div class="dropdown-divider"></div>
+
+            <div class="dropdown-footer">
+              <a href="{{ url_for('logout') }}" class="dropdown-logout-btn">
+                <span>🚪</span> Sign Out
+              </a>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <!-- Modern Guest Auth Actions -->
+        <div class="guest-auth-actions">
+          <a href="{{ url_for('login') }}" class="btn-ghost-auth">Sign In</a>
+          <a href="{{ url_for('signup') }}" class="btn-primary-auth">
+            <span>Sign Up</span>
+            <span class="auth-btn-arrow">→</span>
+          </a>
+        </div>
+        {% endif %}
+      </nav>
+    </div>
+
+    <!-- Secondary Category / Fast Explore Sub-Bar (Food Marketplace Experience) -->
+    <div class="header-explore-strip">
+      <div class="container explore-strip-inner">
+        <!-- Order Mode Toggle -->
+        <div class="delivery-mode-toggle" id="order-mode-toggle">
+          <button type="button" class="mode-btn active" data-mode="delivery" onclick="setOrderMode('delivery', this)">🛵 Delivery</button>
+          <button type="button" class="mode-btn" data-mode="pickup" onclick="setOrderMode('pickup', this)">🥡 Pickup</button>
+        </div>
+
+        <div class="explore-divider"></div>
+
+        <!-- Scrollable Fast Category Chips -->
+        <div class="explore-chips-scroll">
+          <a href="{{ url_for('offers') }}" class="explore-chip chip-highlight">
+            <span>🔥</span> 50% Off Deals
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Pizza') }}" class="explore-chip">
+            <span>🍕</span> Pizza
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Burgers') }}" class="explore-chip">
+            <span>🍔</span> Burgers
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Sushi') }}" class="explore-chip">
+            <span>🍣</span> Sushi
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Healthy') }}" class="explore-chip">
+            <span>🥗</span> Healthy & Bowls
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Asian') }}" class="explore-chip">
+            <span>🍜</span> Asian & Ramen
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Mexican') }}" class="explore-chip">
+            <span>🌮</span> Mexican & Tacos
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Desserts') }}" class="explore-chip">
+            <span>🍰</span> Desserts
+          </a>
+          <a href="{{ url_for('restaurants_list', cuisine='Beverages') }}" class="explore-chip">
+            <span>🥤</span> Drinks & Boba
+          </a>
+          <a href="{{ url_for('restaurants_list', sort='rating') }}" class="explore-chip">
+            <span>⭐</span> Top Rated (4.8+)
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Delivery Location Modal -->
+  <div class="modal-backdrop" id="location-picker-modal">
+    <div class="modal-container location-modal-container">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title">Select Delivery Location</h3>
+          <p class="modal-subtitle">Choose your neighborhood or enter a street address</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeLocationModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="loc-search-box">
+          <span style="font-size: 1.1rem; color: var(--text-muted);">🔍</span>
+          <input type="text" id="manual-location-input" placeholder="Enter street address, building, or zip code..." autocomplete="off">
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveManualLocation()">Set Location</button>
+        </div>
+
+        <div class="preset-locations-header">Popular Neighborhoods in New York</div>
+        <div class="preset-locations-grid">
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Downtown, New York')">
+            <span class="preset-loc-icon">🏙️</span>
+            <div>
+              <div class="preset-loc-name">Downtown Manhattan</div>
+              <div class="preset-loc-desc">Est. delivery ~20 mins • 45+ kitchens</div>
+            </div>
+          </button>
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Midtown, New York')">
+            <span class="preset-loc-icon">🏢</span>
+            <div>
+              <div class="preset-loc-name">Midtown East & West</div>
+              <div class="preset-loc-desc">Est. delivery ~25 mins • 60+ kitchens</div>
+            </div>
+          </button>
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Brooklyn Heights, NY')">
+            <span class="preset-loc-icon">🌉</span>
+            <div>
+              <div class="preset-loc-name">Brooklyn Heights</div>
+              <div class="preset-loc-desc">Est. delivery ~22 mins • 38+ kitchens</div>
+            </div>
+          </button>
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Williamsburg, Brooklyn')">
+            <span class="preset-loc-icon">🎨</span>
+            <div>
+              <div class="preset-loc-name">Williamsburg Arts District</div>
+              <div class="preset-loc-desc">Est. delivery ~20 mins • 50+ kitchens</div>
+            </div>
+          </button>
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Queens Plaza, NY')">
+            <span class="preset-loc-icon">🚇</span>
+            <div>
+              <div class="preset-loc-name">Queens Plaza / LIC</div>
+              <div class="preset-loc-desc">Est. delivery ~28 mins • 30+ kitchens</div>
+            </div>
+          </button>
+          <button type="button" class="preset-loc-card" onclick="selectPresetLocation('Upper East Side, NY')">
+            <span class="preset-loc-icon">🌳</span>
+            <div>
+              <div class="preset-loc-name">Upper East Side</div>
+              <div class="preset-loc-desc">Est. delivery ~24 mins • 42+ kitchens</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flash Notifications -->
+  <div class="container flash-messages">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" style="font-weight: 800; color: inherit;">✕</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Content Body -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Reusable Dish Customizer Modal Shell -->
+  <div class="modal-backdrop" id="dish-customizer-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="customizer-item-name">Customize Item</h3>
+        <button class="modal-close-btn" onclick="closeCustomizerModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <img id="customizer-item-img" src="" alt="Dish Image" class="customizer-image-header">
+        <p id="customizer-item-desc" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.45;"></p>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin-bottom: 20px;" id="customizer-base-price">$0.00</div>
+
+        <!-- Dynamic Modifier Groups Container -->
+        <div id="customizer-modifiers-container"></div>
+
+        <!-- Special Instructions -->
+        <div style="margin-top: 18px;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 8px;">Special Instructions (Optional)</label>
+          <textarea id="customizer-notes" class="special-instructions-input" placeholder="e.g. Extra dressing on the side, no cutlery needed..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="quantity-stepper">
+          <button class="stepper-btn" onclick="changeCustomizerQty(-1)">−</button>
+          <span class="stepper-value" id="customizer-qty">1</span>
+          <button class="stepper-btn" onclick="changeCustomizerQty(1)">+</button>
+        </div>
+        <button class="btn btn-primary btn-lg" id="customizer-add-btn" onclick="addCustomizedItemToCart()">
+          <span id="customizer-add-btn-label">Add to Order • $0.00</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Advertisement Deal Badge -->
+  <div class="floating-deal-badge" id="floating-deal-trigger" title="Exclusive Offers & Promo Codes">
+    <span class="deal-fire-icon">🔥</span>
+    <div>
+      <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--accent); font-weight: 800;">Exclusive Offer</div>
+      <div style="font-size: 0.88rem; font-weight: 800; line-height: 1.1;">50% OFF Feasts</div>
+    </div>
+  </div>
+
+  <!-- Interactive Deals & Offers Modal Drawer -->
+  <div class="deals-drawer-backdrop" id="deals-drawer-modal">
+    <div class="deals-drawer-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+        <div>
+          <div class="tag tag-warning" style="margin-bottom: 4px;">🎉 Active Advertisements & Deals</div>
+          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--secondary);">Available Promo Codes</h2>
+        </div>
+        <button class="modal-close-btn" id="close-deals-drawer-btn" style="font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+
+      <!-- Coupon 1 -->
+      <div class="deal-ad-card">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 1.3rem;">🍔</span>
+            <strong style="font-size: 1.05rem; color: var(--secondary);">WELCOME50</strong>
+            <span class="tag tag-primary">50% OFF</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+            Save 50% on your first order up to $15 max. Valid for all new & returning accounts.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm apply-promo-quick-btn" data-code="WELCOME50">
+          Apply Now
+        </button>
+      </div>
+
+      <!-- Coupon 2 -->
+      <div class="deal-ad-card">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 1.3rem;">🛵</span>
+            <strong style="font-size: 1.05rem; color: var(--secondary);">FREESHIP</strong>
+            <span class="tag tag-success">Free Delivery</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+            Free delivery on any order above $15 from all participating kitchen partners.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm apply-promo-quick-btn" data-code="FREESHIP">
+          Apply Now
+        </button>
+      </div>
+
+      <!-- Coupon 3 -->
+      <div class="deal-ad-card">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 1.3rem;">🥤</span>
+            <strong style="font-size: 1.05rem; color: var(--secondary);">CRAVE20</strong>
+            <span class="tag tag-warning">20% OFF</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+            Get 20% discount on entire cart for orders over $25 including all artisan beverages.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm apply-promo-quick-btn" data-code="CRAVE20">
+          Apply Now
+        </button>
+      </div>
+
+      <!-- Coupon 4 -->
+      <div class="deal-ad-card">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 1.3rem;">🎁</span>
+            <strong style="font-size: 1.05rem; color: var(--secondary);">TASTY10</strong>
+            <span class="tag tag-primary">$10 Flat OFF</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+            $10 instant discount on all gourmet feasts exceeding $35.
+          </p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm apply-promo-quick-btn" data-code="TASTY10">
+          Apply Now
+        </button>
+      </div>
+
+      <div style="text-align: center; margin-top: 18px; font-size: 0.82rem; color: var(--text-muted);">
+        ✨ Discounts apply directly to your cart at checkout.
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Mobile Responsive Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <div class="mobile-nav-items">
+      <a href="{{ url_for('index') }}" class="mobile-nav-item {% if request.path == '/' %}active{% endif %}">
+        <span>🏠</span>
+        <span>Home</span>
+      </a>
+      <a href="{{ url_for('restaurants_list') }}" class="mobile-nav-item {% if request.path == '/restaurants' %}active{% endif %}">
+        <span>🍽️</span>
+        <span>Browse</span>
+      </a>
+      <a href="{{ url_for('cart') }}" class="mobile-nav-item {% if request.path == '/cart' %}active{% endif %}">
+        <span style="position: relative;">
+          🛒
+          {% if cart_count > 0 %}
+          <span class="badge-count" style="top:-6px; right:-8px; font-size:0.65rem; min-width:16px; height:16px;">{{ cart_count }}</span>
+          {% endif %}
+        </span>
+        <span>Cart</span>
+      </a>
+      <a href="{{ url_for('orders_list') }}" class="mobile-nav-item {% if request.path == '/orders' %}active{% endif %}">
+        <span>📦</span>
+        <span>Orders</span>
+      </a>
+      <a href="{{ url_for('profile') }}" class="mobile-nav-item {% if request.path == '/profile' %}active{% endif %}">
+        <span>👤</span>
+        <span>Profile</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Global Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand-logo">
+            <div class="logo-icon-wrap">🍔</div>
+            <div class="brand-name">Crave<span>Cart</span></div>
+          </div>
+          <p class="footer-tagline">
+            Good food, right when you want it. Delivering happiness from top local kitchens directly to your doorstep.
+          </p>
+          <div style="display: flex; gap: 12px; font-size: 1.3rem;">
+            <span>📸</span> <span>🐦</span> <span>📘</span> <span>💼</span>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Discover</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('restaurants_list') }}">All Restaurants</a></li>
+            <li><a href="{{ url_for('offers') }}">Discounts & Deals</a></li>
+            <li><a href="{{ url_for('restaurants_list', cuisine='Pizza') }}">Pizza Delivery</a></li>
+            <li><a href="{{ url_for('restaurants_list', cuisine='Healthy') }}">Healthy Food</a></li>
+            <li><a href="{{ url_for('restaurants_list', cuisine='Indian') }}">Indian Delicacies</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Partner With Us</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('partner_overview') }}">Restaurant Dashboard</a></li>
+            <li><a href="{{ url_for('courier_overview') }}">Courier Dashboard</a></li>
+            <li><a href="{{ url_for('partner_profile') }}">Add Your Restaurant</a></li>
+            <li><a href="{{ url_for('courier_deliveries') }}">Deliver With Us</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Support</h4>
+          <ul class="footer-links">
+            <li><a href="{{ url_for('help_center') }}">Help Center</a></li>
+            <li><a href="{{ url_for('orders_list') }}">Order Status</a></li>
+            <li><a href="{{ url_for('help_center') }}">Refund Guidance</a></li>
+            <li><a href="{{ url_for('help_center') }}">Contact Support</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-heading">Get the App</h4>
+          <div class="app-badges">
+            <a href="#" class="app-badge-btn">
+              <span style="font-size: 1.6rem;">🍏</span>
+              <div>
+                <div style="font-size: 0.65rem; text-transform: uppercase;">Download on the</div>
+                <div style="font-size: 0.95rem; font-weight: 700;">App Store</div>
+              </div>
+            </a>
+            <a href="#" class="app-badge-btn">
+              <span style="font-size: 1.6rem;">🤖</span>
+              <div>
+                <div style="font-size: 0.65rem; text-transform: uppercase;">Get it on</div>
+                <div style="font-size: 0.95rem; font-weight: 700;">Google Play</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 CraveCart Inc. All rights reserved. Original culinary delivery marketplace.</div>
+        <div style="display: flex; gap: 20px;">
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">Cookie Preferences</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Core JavaScript Scripts -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

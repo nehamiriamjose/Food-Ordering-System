@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Restaurants & Menus | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 24px;">
+  <!-- Top Title & Search Banner -->
+  <div style="margin-bottom: 24px;">
+    <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+      {% if selected_cuisine %}
+        {{ selected_cuisine }} Restaurants
+      {% elif search_query %}
+        Search results for "{{ search_query }}"
+      {% else %}
+        Explore All Restaurants
+      {% endif %}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Showing {{ result_count }} top kitchens delivering to <strong>{{ current_location }}</strong>
+    </p>
+  </div>
+
+  <!-- Modern Elevated Filter & Sort Toolbar -->
+  <div class="restaurants-filter-toolbar">
+    <form method="GET" action="{{ url_for('restaurants_list') }}" id="filter-form" class="filter-toolbar-inner">
+      
+      <!-- Horizontal Scrollable Cuisine Pills -->
+      <div class="cuisine-scroll-container">
+        <a href="{{ url_for('restaurants_list', sort=selected_sort) }}" class="cuisine-filter-pill {% if not selected_cuisine %}active{% endif %}">
+          <span class="pill-icon">🍽️</span>
+          <span>All Cuisines</span>
+        </a>
+        {% for c in cuisines %}
+        <a href="{{ url_for('restaurants_list', cuisine=c.name, sort=selected_sort) }}" class="cuisine-filter-pill {% if selected_cuisine == c.name %}active{% endif %}">
+          <span class="pill-icon">{{ c.icon }}</span>
+          <span>{{ c.name }}</span>
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Sort By Custom Dropdown -->
+      <div class="sort-control-group">
+        <label for="sort-select" class="sort-label">Sort by:</label>
+        <div class="sort-select-wrapper">
+          <select name="sort" id="sort-select" onchange="document.getElementById('filter-form').submit()" class="sort-dropdown-input">
+            <option value="recommended" {% if selected_sort == 'recommended' %}selected{% endif %}>✨ Recommended</option>
+            <option value="fastest" {% if selected_sort == 'fastest' %}selected{% endif %}>⚡ Fastest Delivery</option>
+            <option value="rating" {% if selected_sort == 'rating' %}selected{% endif %}>⭐ Highest Rated</option>
+            <option value="fee" {% if selected_sort == 'fee' %}selected{% endif %}>🚴 Lowest Delivery Fee</option>
+            <option value="reviews" {% if selected_sort == 'reviews' %}selected{% endif %}>💬 Most Reviews</option>
+          </select>
+        </div>
+        {% if selected_cuisine %}
+        <input type="hidden" name="cuisine" value="{{ selected_cuisine }}">
+        {% endif %}
+        {% if search_query %}
+        <input type="hidden" name="q" value="{{ search_query }}">
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Restaurant Grid or Empty State -->
+  {% if restaurants %}
+  <div class="restaurants-grid">
+    {% for rest in restaurants %}
+    <div class="restaurant-card">
+      <div class="card-image-wrap">
+        <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+        <button class="card-favorite-btn {% if rest.id in fav_rest_ids %}active{% endif %}" data-restaurant-id="{{ rest.id }}" title="Save restaurant">
+          {% if rest.id in fav_rest_ids %}❤️{% else %}🤍{% endif %}
+        </button>
+        {% if rest.is_featured %}
+        <div class="card-offer-badge">Featured</div>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="card-header-row">
+          <h3 class="restaurant-title">
+            <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+          </h3>
+          <div class="rating-badge">
+            {% if rest.review_count and rest.review_count > 0 and rest.rating %}
+              <span class="rating-star">★</span> {{ "%.1f"|format(rest.rating) }}
+            {% else %}
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary);">✨ New</span>
+            {% endif %}
+          </div>
+        </div>
+        <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.price_level }} • {{ rest.address.split(',')[0] }}</p>
+
+        <div class="card-meta-row">
+          <div class="meta-item">
+            <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+          </div>
+          <div class="meta-item">
+            <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }} delivery
+          </div>
+          <div class="meta-item" style="margin-left: auto;">
+            <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">View Menu</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🍽️</div>
+    <h3 class="empty-title">No restaurants found</h3>
+    <p class="empty-desc">We couldn't find any restaurants matching your current search or filters. Try adjusting your selections.</p>
+    <a href="{{ url_for('restaurants_list') }}" class="btn btn-primary">Clear All Filters</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

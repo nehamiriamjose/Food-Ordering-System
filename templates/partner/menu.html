@@ -1,0 +1,939 @@
+{% extends 'partner/base_partner.html' %}
+
+{% block title %}Menu Management & Dishes | {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">Menu Studio</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Create menu categories, add culinary dishes with photos, customize prices, and toggle live stock availability.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <button type="button" class="btn btn-outline btn-sm" onclick="openCategoryModal()">
+      <span>📁</span> + Add Category
+    </button>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openAddDishModal()">
+      <span>🍳</span> + Add New Dish
+    </button>
+    <a href="{{ url_for('restaurant_detail', restaurant_id=restaurant.id) }}" class="btn btn-secondary btn-sm" target="_blank">
+      <span>👁️</span> Preview Live Menu
+    </a>
+  </div>
+</div>
+
+<!-- Menu Stats Bar -->
+<div class="stats-grid" style="margin-bottom: 28px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  <div class="stat-card" style="padding: 14px 18px;">
+    <div class="stat-info-left">
+      <span class="stat-label">Total Categories</span>
+      <span class="stat-value" style="font-size: 1.5rem;">{{ categories|length }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="width: 44px; height: 44px; font-size: 1.2rem; background: #FFF3EB; color: #EA580C;">📁</div>
+  </div>
+
+  <div class="stat-card" style="padding: 14px 18px;">
+    <div class="stat-info-left">
+      <span class="stat-label">Total Dishes</span>
+      <span class="stat-value" style="font-size: 1.5rem;">{{ total_dishes }}</span>
+    </div>
+    <div class="stat-icon-wrap" style="width: 44px; height: 44px; font-size: 1.2rem; background: #ECFDF5; color: #059669;">🍽️</div>
+  </div>
+
+  <div class="stat-card" style="padding: 14px 18px;">
+    <div class="stat-info-left">
+      <span class="stat-label">Kitchen Status</span>
+      <span class="stat-value" style="font-size: 1.15rem; color: {% if restaurant.is_open %}var(--success){% else %}var(--danger){% endif %};">
+        {% if restaurant.is_open %}🟢 Open{% else %}🔴 Closed{% endif %}
+      </span>
+    </div>
+    <div class="stat-icon-wrap" style="width: 44px; height: 44px; font-size: 1.2rem; background: #EFF6FF; color: #2563EB;">⏰</div>
+  </div>
+</div>
+
+<!-- If No Categories or Dishes (New Restaurant Empty State) -->
+{% if not categories %}
+<div class="data-table-card" style="padding: 48px 24px; text-align: center; margin-bottom: 32px; background: #FFF;">
+  <div style="font-size: 3.5rem; margin-bottom: 16px;">🍽️</div>
+  <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">Your Menu is Currently Empty</h2>
+  <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 500px; margin: 0 auto 24px;">
+    Get your restaurant ready for customers! Create your first category (e.g. Starters, Main Course, Drinks) and start adding your delicious dishes with photos and pricing.
+  </p>
+
+  <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+    <button type="button" class="btn btn-primary btn-lg" onclick="openCategoryModal()">
+      📁 Create First Category
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<!-- Categories & Dishes List -->
+{% for cat_data in menu_by_category %}
+<div class="data-table-card" style="margin-bottom: 32px; background: #FFF; border: 1.5px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden;">
+  <!-- Category Header Bar -->
+  <div style="padding: 16px 20px; background: var(--bg-muted); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 1.2rem;">📁</span>
+      <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin: 0;">{{ cat_data.category.name }}</h3>
+      <span class="tag tag-secondary" style="font-weight: 700;">{{ cat_data.dish_items|length }} dishes</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="button" class="btn btn-outline btn-xs" onclick="openAddDishModalWithCategory('{{ cat_data.category.id }}', '{{ cat_data.category.name|escape }}')" style="font-size: 0.8rem; padding: 4px 10px;">
+        + Add Dish to {{ cat_data.category.name }}
+      </button>
+
+      <form method="POST" action="{{ url_for('partner_delete_category', cat_id=cat_data.category.id) }}" style="display: inline;">
+        <button type="button" class="btn btn-outline btn-xs" style="color: var(--danger); border-color: #FECACA; font-size: 0.8rem; padding: 4px 8px;" title="Delete category" onclick="confirmAction(event, 'Delete Category?', 'Delete category \'{{ cat_data.category.name|escape }}\' and all {{ cat_data.dish_items|length }} dishes in it?', 'Yes, Delete Category', 'danger', '🗑️')">
+          🗑️ Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dishes in Category -->
+  {% if cat_data.dish_items %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 45%;">Dish & Details</th>
+        <th>Price</th>
+        <th>Dietary & Tags</th>
+        <th>Live Stock</th>
+        <th style="text-align: right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cat_data.dish_items %}
+      <tr id="dish-row-{{ item.id }}">
+        <td>
+          <div class="table-dish-info" style="display: flex; align-items: center; gap: 14px;">
+            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="table-dish-thumb" style="width: 56px; height: 56px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-color); flex-shrink: 0;">
+            <div>
+              <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary);">{{ item.name }}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); max-width: 380px; line-height: 1.35; margin-top: 2px;">
+                {{ item.description or 'No description provided' }}
+              </div>
+            </div>
+          </div>
+        </td>
+        <td style="font-weight: 800; font-size: 1.05rem; color: var(--secondary);">
+          ${{ "%.2f"|format(item.price) }}
+          {% if item.sizes %}
+          <div style="margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
+            <span class="tag tag-primary" style="font-size: 0.72rem; padding: 2px 6px; font-weight: 700;" title="Sizes: {% for s in item.sizes %}{{ s.name }} ({% if s.price_delta > 0 %}+${{ '%.2f'|format(s.price_delta) }}{% elif s.price_delta < 0 %}-${{ '%.2f'|format(-s.price_delta) }}{% else %}base{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}">
+              📏 {{ item.sizes|length }} Sizes (S/M/L)
+            </span>
+          </div>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+            {% if item.is_popular %}<span class="tag tag-warning">⭐ Popular</span>{% endif %}
+            {% if item.is_vegetarian %}<span class="tag tag-success">🌱 Veg</span>{% endif %}
+            {% if item.is_vegan %}<span class="tag tag-success">🌿 Vegan</span>{% endif %}
+            {% if item.is_gluten_free %}<span class="tag tag-primary">🌾 Gluten-Free</span>{% endif %}
+            {% if item.is_spicy %}<span class="tag tag-danger">🌶️ Spicy</span>{% endif %}
+            {% if not item.is_popular and not item.is_vegetarian and not item.is_vegan and not item.is_gluten_free and not item.is_spicy %}
+            <span style="color: var(--text-light); font-size: 0.78rem;">Standard</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <label class="switch" title="Toggle Live Availability">
+            <input type="checkbox" class="item-stock-toggle" data-item-id="{{ item.id }}" onchange="toggleDishStock({{ item.id }}, this)" {% if item.is_available %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span id="stock-label-{{ item.id }}" style="font-size: 0.75rem; font-weight: 700; margin-left: 6px; color: {% if item.is_available %}var(--success){% else %}var(--danger){% endif %};">
+            {% if item.is_available %}In Stock{% else %}86'd / Sold Out{% endif %}
+          </span>
+        </td>
+        <td style="text-align: right; white-space: nowrap;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="openEditDishModal({{ item.id }}, '{{ item.name|escape }}', {{ item.category_id }}, {{ item.price }}, '{{ (item.description or '')|escape }}', '{{ item.image_url|escape }}', {{ item.is_vegetarian }}, {{ item.is_vegan }}, {{ item.is_gluten_free }}, {{ item.is_spicy }}, {{ item.is_popular }})" style="padding: 4px 10px;" title="Edit Dish Details">
+            ✏️ Edit
+          </button>
+          
+          <form method="POST" action="{{ url_for('partner_delete_item', item_id=item.id) }}" style="display: inline;">
+            <button type="button" class="btn btn-outline btn-xs" style="color: var(--danger); border-color: #FECACA; padding: 4px 8px;" title="Delete Dish" onclick="confirmAction(event, 'Remove Dish from Menu?', 'Are you sure you want to remove \'{{ item.name|escape }}\' from your restaurant menu?', 'Yes, Remove Dish', 'danger', '🍽️')">
+              🗑️
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+    No dishes in this category yet. Click <strong>+ Add Dish to {{ cat_data.category.name }}</strong> above to create your first item.
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<!-- Modal 1: Add Category Modal -->
+<div class="modal-backdrop" id="category-modal">
+  <div class="modal-container" style="max-width: 460px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Menu Category</h3>
+      <button class="modal-close-btn" onclick="closeCategoryModal()">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('partner_add_category') }}">
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Category Name</label>
+          <input type="text" name="name" placeholder="e.g. Starters & Appetizers, Wood-Fired Pizzas, Handcrafted Drinks..." class="form-control" required autofocus>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label class="form-label">Display Order (Sort Priority)</label>
+          <input type="number" name="sort_order" value="{{ categories|length + 1 }}" min="1" class="form-control" required>
+          <small style="color: var(--text-muted); font-size: 0.78rem;">Lower numbers appear higher on your storefront menu.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeCategoryModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Category</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Add Dish Modal -->
+<div class="modal-backdrop" id="add-dish-modal">
+  <div class="modal-container" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">🍳</span>
+        <h3 class="modal-title" style="margin: 0;">Add New Dish to Menu</h3>
+      </div>
+      <button class="modal-close-btn" onclick="closeAddDishModal()">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('partner_add_item') }}" enctype="multipart/form-data">
+      <div class="modal-body">
+        
+        <!-- Category & Price Row -->
+        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; margin-bottom: 14px;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label" style="margin: 0;">Category</label>
+              <button type="button" onclick="openCategoryModal()" style="background: none; border: none; color: var(--primary); font-size: 0.76rem; font-weight: 700; cursor: pointer; padding: 0;">
+                + New Category
+              </button>
+            </div>
+            <select name="category_id" id="add-dish-category-select" class="form-control" required>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Base Price ($ USD)</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">💲</span>
+              <input type="number" step="0.01" min="0.50" name="price" placeholder="14.99" class="form-control" required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dish Name -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Dish Name</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">🍽️</span>
+            <input type="text" name="name" placeholder="e.g. Truffle Mushroom Artisan Pizza, Organic Quinoa Bowl..." class="form-control" required>
+          </div>
+        </div>
+
+        <!-- Portion Sizes & Variations (Small, Medium, Large) -->
+        <div class="form-group" style="margin-bottom: 14px; background: #FAF9F6; border: 1.5px solid #E5E7EB; border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <div style="font-weight: 800; font-size: 0.92rem; color: var(--secondary); display: flex; align-items: center; gap: 6px;">
+                <span>📏</span> Portion Sizes, Daily Stock & Multi-Choice
+              </div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 1px;">
+                Configure portion sizes, daily stock availability per day, and customer selection rules.
+              </div>
+            </div>
+            
+            <label class="switch" title="Toggle Size Options" style="margin-left: 10px;">
+              <input type="checkbox" name="enable_sizes" id="add-enable-sizes-toggle" value="1" checked onchange="toggleSizeOptionsSection('add', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="add-sizes-container">
+            <!-- Customer Selection Mode: Single Choice vs Multi Choice -->
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; background: #FFF; padding: 10px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.82rem; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 6px;">
+                <span>🎯</span> Customer Selection Rule:
+              </div>
+              <div style="display: flex; gap: 16px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--secondary); padding: 4px 8px; border-radius: 4px; background: #F3F4F6;">
+                  <input type="radio" name="size_multiselect" value="0" id="add-size-mode-single" checked onchange="syncSizeSelectionMode('add')">
+                  <span>🔘 Single Size (Radio)</span>
+                </label>
+                <label style="font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; color: #166534; padding: 4px 8px; border-radius: 4px; background: #DCFCE7;">
+                  <input type="radio" name="size_multiselect" value="1" id="add-size-mode-multi" onchange="syncSizeSelectionMode('add')">
+                  <span>☑️ Multi-Choice (Allow Selecting Multiple Sizes)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Quick Preset Chips -->
+            <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⚡ Presets:</span>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('add', 'standard')" style="font-size: 0.74rem; padding: 2px 7px;">Standard (S / M / L)</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('add', 'pizza')" style="font-size: 0.74rem; padding: 2px 7px;">🍕 Pizza (10" / 12" / 14")</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('add', 'beverage')" style="font-size: 0.74rem; padding: 2px 7px;">🥤 Drinks (8oz / 12oz / 16oz)</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('add', 'bowl')" style="font-size: 0.74rem; padding: 2px 7px;">🥗 Bowls (Small / Regular / Feast)</button>
+            </div>
+
+            <!-- Size Headers -->
+            <div style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; padding: 0 4px;">
+              <span id="add-size-header-select" style="text-align: center;" title="Pre-selected choice">🔘 DEF</span>
+              <span>Size / Portion Name</span>
+              <span>Price Delta (+$ / -$)</span>
+              <span title="Units available per day">📦 Daily Stock</span>
+              <span style="text-align: center;">Label</span>
+              <span></span>
+            </div>
+
+            <!-- Size Rows List -->
+            <div style="display: flex; flex-direction: column; gap: 8px;" id="add-sizes-list">
+              <!-- Small Row -->
+              <div class="size-config-row" style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; align-items: center; background: #FFF; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: center;">
+                  <input type="radio" name="size_default_index" value="0" class="size-choice-input" style="cursor: pointer;" title="Set as default selection">
+                </div>
+                <input type="text" name="size_name[]" value="Small (Individual)" placeholder="e.g. Small" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 8px;" required>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">+$</span>
+                  <input type="number" step="0.01" name="size_delta[]" value="-2.00" placeholder="0.00" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 26px;">
+                </div>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">📦</span>
+                  <input type="number" min="0" step="1" name="size_stock[]" value="25" placeholder="50" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 24px;" title="Daily stock units">
+                </div>
+                <span class="tag tag-secondary" style="font-size: 0.7rem; text-align: center; justify-content: center; padding: 2px 4px;">Small</span>
+                <button type="button" class="btn-xs btn-outline" onclick="removeSizeRow(this)" style="color: var(--danger); border-color: #FECACA; padding: 2px 4px;" title="Remove size">✕</button>
+              </div>
+
+              <!-- Medium Row -->
+              <div class="size-config-row" style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; align-items: center; background: #FFF; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: center;">
+                  <input type="radio" name="size_default_index" value="1" checked class="size-choice-input" style="cursor: pointer;" title="Set as default selection">
+                </div>
+                <input type="text" name="size_name[]" value="Medium (Regular)" placeholder="e.g. Medium" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 8px;" required>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">+$</span>
+                  <input type="number" step="0.01" name="size_delta[]" value="0.00" placeholder="0.00" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 26px;">
+                </div>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">📦</span>
+                  <input type="number" min="0" step="1" name="size_stock[]" value="50" placeholder="50" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 24px;" title="Daily stock units">
+                </div>
+                <span class="tag tag-primary" style="font-size: 0.7rem; text-align: center; justify-content: center; padding: 2px 4px;">Medium</span>
+                <button type="button" class="btn-xs btn-outline" onclick="removeSizeRow(this)" style="color: var(--danger); border-color: #FECACA; padding: 2px 4px;" title="Remove size">✕</button>
+              </div>
+
+              <!-- Large Row -->
+              <div class="size-config-row" style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; align-items: center; background: #FFF; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; justify-content: center;">
+                  <input type="radio" name="size_default_index" value="2" class="size-choice-input" style="cursor: pointer;" title="Set as default selection">
+                </div>
+                <input type="text" name="size_name[]" value="Large (Feast)" placeholder="e.g. Large" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 8px;" required>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">+$</span>
+                  <input type="number" step="0.01" name="size_delta[]" value="3.50" placeholder="3.50" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 26px;">
+                </div>
+                <div class="input-icon-wrap" style="margin: 0;">
+                  <span class="input-icon" style="font-size: 0.75rem;">📦</span>
+                  <input type="number" min="0" step="1" name="size_stock[]" value="20" placeholder="50" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 24px;" title="Daily stock units">
+                </div>
+                <span class="tag tag-warning" style="font-size: 0.7rem; text-align: center; justify-content: center; padding: 2px 4px;">Large</span>
+                <button type="button" class="btn-xs btn-outline" onclick="removeSizeRow(this)" style="color: var(--danger); border-color: #FECACA; padding: 2px 4px;" title="Remove size">✕</button>
+              </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+              <small id="add-size-help-text" style="font-size: 0.75rem; color: var(--text-muted);">
+                🔘 Single Size Mode: Radio button marks the default pre-selected size on the customer storefront.
+              </small>
+              <button type="button" class="btn-xs btn-outline" onclick="addCustomSizeRow('add')" style="font-size: 0.75rem; padding: 3px 8px;">
+                + Add Extra Size (XL)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Description & Ingredients</label>
+          <textarea name="description" placeholder="Describe the flavors, farm-fresh ingredients, preparation style, and allergens..." class="form-control" style="min-height: 75px; resize: vertical;"></textarea>
+        </div>
+
+        <!-- Dish Photo Upload / Presets -->
+        <div class="form-group" style="margin-bottom: 14px; background: var(--bg-muted); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <label class="form-label" style="margin-bottom: 6px;">📷 Dish Photo & Image Upload</label>
+          
+          <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 10px;">
+            <div style="position: relative; width: 68px; height: 68px; border-radius: var(--radius-md); overflow: hidden; border: 2px dashed var(--border-color); background: #FFF; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+              <img id="add-dish-preview-img" src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80" alt="Dish Preview" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div style="flex: 1;">
+              <input type="file" name="dish_image_file" id="add-dish-file-input" accept="image/*" class="form-control" style="padding: 6px; font-size: 0.82rem;" onchange="previewAddDishFile(this)">
+              <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 3px;">Upload PNG, JPG, WEBP from your device</small>
+            </div>
+          </div>
+
+          <!-- Hidden Image URL Holder -->
+          <input type="hidden" name="image_url" id="add-dish-url-input" value="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80">
+
+          <!-- Quick Food Preset Buttons -->
+          <div>
+            <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">⚡ Or Quick-Select Food Preset Photo:</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80', '🍕 Pizza')" style="font-size: 0.74rem; padding: 2px 7px;">🍕 Pizza</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80', '🍔 Burger')" style="font-size: 0.74rem; padding: 2px 7px;">🍔 Burger</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&auto=format&fit=crop&q=80', '🥗 Bowl')" style="font-size: 0.74rem; padding: 2px 7px;">🥗 Salad/Bowl</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&auto=format&fit=crop&q=80', '🍣 Sushi')" style="font-size: 0.74rem; padding: 2px 7px;">🍣 Sushi</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&auto=format&fit=crop&q=80', '🍛 Curry')" style="font-size: 0.74rem; padding: 2px 7px;">🍛 Curry</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80', '🍰 Dessert')" style="font-size: 0.74rem; padding: 2px 7px;">🍰 Dessert</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('add', 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80', '🥤 Drink')" style="font-size: 0.74rem; padding: 2px 7px;">🥤 Drink</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dietary & Marketing Badges -->
+        <div class="form-group" style="margin-bottom: 6px;">
+          <label class="form-label" style="margin-bottom: 6px;">Dietary & Menu Badges</label>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_vegetarian" value="1">
+              <span>🌱 Vegetarian</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_vegan" value="1">
+              <span>🌿 Vegan</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_gluten_free" value="1">
+              <span>🌾 Gluten-Free</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_spicy" value="1">
+              <span>🌶️ Spicy / Hot</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_popular" value="1" checked>
+              <span>⭐ Chef Recommended</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeAddDishModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-lg">🍳 Add Dish to Menu</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: Edit Dish Modal -->
+<div class="modal-backdrop" id="edit-dish-modal">
+  <div class="modal-container" style="max-width: 650px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">✏️</span>
+        <h3 class="modal-title" style="margin: 0;">Edit Dish Details</h3>
+      </div>
+      <button class="modal-close-btn" onclick="closeEditDishModal()">✕</button>
+    </div>
+    <form method="POST" id="edit-dish-form" action="" enctype="multipart/form-data">
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; margin-bottom: 14px;">
+          <div>
+            <label class="form-label">Category</label>
+            <select name="category_id" id="edit-dish-category" class="form-control" required>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Base Price ($ USD)</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">💲</span>
+              <input type="number" step="0.01" min="0.50" name="price" id="edit-dish-price" class="form-control" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Dish Name</label>
+          <input type="text" name="name" id="edit-dish-name" class="form-control" required>
+        </div>
+
+        <!-- Portion Sizes & Variations (Small, Medium, Large) in Edit Modal -->
+        <div class="form-group" style="margin-bottom: 14px; background: #FAF9F6; border: 1.5px solid #E5E7EB; border-radius: var(--radius-md); padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <div style="font-weight: 800; font-size: 0.92rem; color: var(--secondary); display: flex; align-items: center; gap: 6px;">
+                <span>📏</span> Portion Sizes, Daily Stock & Multi-Choice
+              </div>
+              <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 1px;">
+                Customize portion sizes, daily stock quantity, and customer selection rules.
+              </div>
+            </div>
+            
+            <label class="switch" title="Toggle Size Options" style="margin-left: 10px;">
+              <input type="checkbox" name="enable_sizes" id="edit-enable-sizes-toggle" value="1" onchange="toggleSizeOptionsSection('edit', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="edit-sizes-container">
+            <!-- Customer Selection Mode in Edit Modal -->
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; background: #FFF; padding: 10px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border-color); flex-wrap: wrap; gap: 8px;">
+              <div style="font-size: 0.82rem; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 6px;">
+                <span>🎯</span> Customer Selection Rule:
+              </div>
+              <div style="display: flex; gap: 16px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--secondary); padding: 4px 8px; border-radius: 4px; background: #F3F4F6;">
+                  <input type="radio" name="size_multiselect" value="0" id="edit-size-mode-single" checked onchange="syncSizeSelectionMode('edit')">
+                  <span>🔘 Single Size (Radio)</span>
+                </label>
+                <label style="font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; color: #166534; padding: 4px 8px; border-radius: 4px; background: #DCFCE7;">
+                  <input type="radio" name="size_multiselect" value="1" id="edit-size-mode-multi" onchange="syncSizeSelectionMode('edit')">
+                  <span>☑️ Multi-Choice (Allow Selecting Multiple Sizes)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Quick Preset Chips -->
+            <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⚡ Presets:</span>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('edit', 'standard')" style="font-size: 0.74rem; padding: 2px 7px;">Standard (S / M / L)</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('edit', 'pizza')" style="font-size: 0.74rem; padding: 2px 7px;">🍕 Pizza (10" / 12" / 14")</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('edit', 'beverage')" style="font-size: 0.74rem; padding: 2px 7px;">🥤 Drinks (8oz / 12oz / 16oz)</button>
+              <button type="button" class="btn-xs btn-outline" onclick="applySizePreset('edit', 'bowl')" style="font-size: 0.74rem; padding: 2px 7px;">🥗 Bowls (Small / Regular / Feast)</button>
+            </div>
+
+            <!-- Size Headers -->
+            <div style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; padding: 0 4px;">
+              <span id="edit-size-header-select" style="text-align: center;" title="Pre-selected choice">🔘 DEF</span>
+              <span>Size / Portion Name</span>
+              <span>Price Delta (+$ / -$)</span>
+              <span title="Units available per day">📦 Daily Stock</span>
+              <span style="text-align: center;">Label</span>
+              <span></span>
+            </div>
+
+            <!-- Size Rows List -->
+            <div style="display: flex; flex-direction: column; gap: 8px;" id="edit-sizes-list"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+              <small id="edit-size-help-text" style="font-size: 0.75rem; color: var(--text-muted);">
+                🔘 Single Size Mode: Radio button marks the default pre-selected size on the customer storefront.
+              </small>
+              <button type="button" class="btn-xs btn-outline" onclick="addCustomSizeRow('edit')" style="font-size: 0.75rem; padding: 3px 8px;">
+                + Add Extra Size (XL)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label">Description & Ingredients</label>
+          <textarea name="description" id="edit-dish-desc" class="form-control" style="min-height: 75px; resize: vertical;"></textarea>
+        </div>
+
+        <!-- Dish Photo Upload / Presets in Edit Modal -->
+        <div class="form-group" style="margin-bottom: 14px; background: var(--bg-muted); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <label class="form-label" style="margin-bottom: 6px;">📷 Update Dish Photo</label>
+          <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 10px;">
+            <img id="edit-dish-preview-img" src="" alt="Dish Preview" style="width: 68px; height: 68px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-color); flex-shrink: 0;">
+            <div style="flex: 1;">
+              <input type="file" name="dish_image_file" accept="image/*" class="form-control" style="padding: 6px; font-size: 0.82rem;" onchange="previewEditDishFile(this)">
+              <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 3px;">Upload new photo file from device</small>
+            </div>
+          </div>
+          <!-- Hidden Image URL Holder -->
+          <input type="hidden" name="image_url" id="edit-dish-img-url" value="">
+
+          <!-- Quick Food Preset Buttons in Edit Modal -->
+          <div>
+            <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">⚡ Or Quick-Select Food Preset:</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80', '🍕 Pizza')" style="font-size: 0.74rem; padding: 2px 7px;">🍕 Pizza</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80', '🍔 Burger')" style="font-size: 0.74rem; padding: 2px 7px;">🍔 Burger</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&auto=format&fit=crop&q=80', '🥗 Bowl')" style="font-size: 0.74rem; padding: 2px 7px;">🥗 Salad/Bowl</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&auto=format&fit=crop&q=80', '🍣 Sushi')" style="font-size: 0.74rem; padding: 2px 7px;">🍣 Sushi</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&auto=format&fit=crop&q=80', '🍛 Curry')" style="font-size: 0.74rem; padding: 2px 7px;">🍛 Curry</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80', '🍰 Dessert')" style="font-size: 0.74rem; padding: 2px 7px;">🍰 Dessert</button>
+              <button type="button" class="btn-xs btn-outline" onclick="selectDishPreset('edit', 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80', '🥤 Drink')" style="font-size: 0.74rem; padding: 2px 7px;">🥤 Drink</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dietary Checkboxes -->
+        <div class="form-group" style="margin-bottom: 6px;">
+          <label class="form-label" style="margin-bottom: 6px;">Dietary & Menu Tags</label>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px;">
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_vegetarian" id="edit-dish-veg" value="1">
+              <span>🌱 Vegetarian</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_vegan" id="edit-dish-vegan" value="1">
+              <span>🌿 Vegan</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_gluten_free" id="edit-dish-gf" value="1">
+              <span>🌾 Gluten-Free</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_spicy" id="edit-dish-spicy" value="1">
+              <span>🌶️ Spicy</span>
+            </label>
+            <label class="custom-checkbox-label" style="font-size: 0.82rem;">
+              <input type="checkbox" name="is_popular" id="edit-dish-pop" value="1">
+              <span>⭐ Chef Recommended</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeEditDishModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Category Modal
+function openCategoryModal() {
+  document.getElementById('category-modal').classList.add('active');
+}
+function closeCategoryModal() {
+  document.getElementById('category-modal').classList.remove('active');
+}
+
+// Add Dish Modal
+function openAddDishModal() {
+  document.getElementById('add-dish-modal').classList.add('active');
+}
+function openAddDishModalWithCategory(catId, catName) {
+  const select = document.getElementById('add-dish-category-select');
+  if (select) select.value = catId;
+  openAddDishModal();
+}
+function closeAddDishModal() {
+  document.getElementById('add-dish-modal').classList.remove('active');
+}
+
+function previewAddDishFile(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('add-dish-preview-img').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function selectDishPreset(prefix, url, title) {
+  if (prefix === 'edit') {
+    const hiddenInput = document.getElementById('edit-dish-img-url');
+    if (hiddenInput) hiddenInput.value = url;
+    const previewImg = document.getElementById('edit-dish-preview-img');
+    if (previewImg) previewImg.src = url;
+  } else {
+    const hiddenInput = document.getElementById('add-dish-url-input');
+    if (hiddenInput) hiddenInput.value = url;
+    const previewImg = document.getElementById('add-dish-preview-img');
+    if (previewImg) previewImg.src = url;
+  }
+  if (window.showToast) window.showToast(`Preset photo selected: ${title}`, 'info');
+}
+
+// Size Management Helpers (Small, Medium, Large, Stock, Multi-Choice)
+function toggleSizeOptionsSection(prefix, isChecked) {
+  const container = document.getElementById(`${prefix}-sizes-container`);
+  if (container) {
+    container.style.display = isChecked ? 'block' : 'none';
+  }
+}
+
+function syncSizeSelectionMode(prefix) {
+  const isMulti = document.getElementById(`${prefix}-size-mode-multi`)?.checked;
+  const header = document.getElementById(`${prefix}-size-header-select`);
+  const helpText = document.getElementById(`${prefix}-size-help-text`);
+  const rows = document.querySelectorAll(`#${prefix}-sizes-list .size-config-row`);
+
+  if (header) {
+    header.textContent = isMulti ? '☑️ CHOICE' : '🔘 DEF';
+    header.title = isMulti ? 'Multi-Choice: Select multiple sizes' : 'Single Choice: Pre-selected size';
+  }
+
+  if (helpText) {
+    if (isMulti) {
+      helpText.innerHTML = '<strong style="color: #166534;">☑️ Multi-Choice Mode:</strong> Check as many sizes as you want. Customers can select multiple sizes simultaneously in their cart.';
+    } else {
+      helpText.innerHTML = '<strong>🔘 Single Size Mode:</strong> Radio button sets the default pre-selected size on the customer storefront.';
+    }
+  }
+
+  rows.forEach((row, idx) => {
+    const oldInput = row.querySelector('.size-choice-input');
+    if (!oldInput) return;
+    const wasChecked = oldInput.checked;
+    
+    const newInput = document.createElement('input');
+    newInput.className = 'size-choice-input';
+    newInput.style.cursor = 'pointer';
+    
+    if (isMulti) {
+      newInput.type = 'checkbox';
+      newInput.name = 'size_default_multi[]';
+      newInput.value = idx;
+      newInput.checked = wasChecked;
+      newInput.title = 'Check to select size';
+      newInput.style.transform = 'scale(1.2)';
+    } else {
+      newInput.type = 'radio';
+      newInput.name = 'size_default_index';
+      newInput.value = idx;
+      newInput.checked = wasChecked;
+      newInput.title = 'Set as default pre-selected size';
+      newInput.style.transform = 'scale(1.05)';
+    }
+    
+    oldInput.replaceWith(newInput);
+  });
+
+  // If single mode and none is checked, check the first row
+  if (!isMulti) {
+    const checkedRadio = document.querySelector(`#${prefix}-sizes-list input[name="size_default_index"]:checked`);
+    if (!checkedRadio && rows.length > 0) {
+      const firstRadio = rows[0].querySelector('input[name="size_default_index"]');
+      if (firstRadio) firstRadio.checked = true;
+    }
+  }
+}
+
+function renderSizeRowHtml(prefix, idx, name, delta, isDefault, stock = 50, tagLabel = 'Size') {
+  const isMulti = Boolean(document.getElementById(`${prefix}-size-mode-multi`)?.checked);
+  const inputHtml = isMulti 
+    ? `<input type="checkbox" name="size_default_multi[]" value="${idx}" class="size-choice-input" ${isDefault ? 'checked' : ''} style="cursor: pointer; transform: scale(1.2);" title="Check to select size">`
+    : `<input type="radio" name="size_default_index" value="${idx}" class="size-choice-input" ${isDefault ? 'checked' : ''} style="cursor: pointer; transform: scale(1.05);" title="Set as default selection">`;
+
+  return `
+    <div class="size-config-row" style="display: grid; grid-template-columns: 32px 1.3fr 0.9fr 0.85fr 75px 28px; gap: 8px; align-items: center; background: #FFF; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+      <div style="display: flex; align-items: center; justify-content: center;">
+        ${inputHtml}
+      </div>
+      <input type="text" name="size_name[]" value="${escapeHtml(name)}" placeholder="e.g. Small / Medium / Large" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 8px;" required>
+      <div class="input-icon-wrap" style="margin: 0;">
+        <span class="input-icon" style="font-size: 0.75rem;">+$</span>
+        <input type="number" step="0.01" name="size_delta[]" value="${parseFloat(delta).toFixed(2)}" placeholder="0.00" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 26px;">
+      </div>
+      <div class="input-icon-wrap" style="margin: 0;">
+        <span class="input-icon" style="font-size: 0.75rem;">📦</span>
+        <input type="number" min="0" step="1" name="size_stock[]" value="${parseInt(stock) || 50}" placeholder="50" class="form-control form-control-sm" style="font-size: 0.82rem; padding: 4px 6px 4px 24px;" title="Daily stock available">
+      </div>
+      <span class="tag ${idx === 1 ? 'tag-primary' : (idx === 2 ? 'tag-warning' : 'tag-secondary')}" style="font-size: 0.7rem; text-align: center; justify-content: center; padding: 2px 4px;">${tagLabel}</span>
+      <button type="button" class="btn-xs btn-outline" onclick="removeSizeRow(this)" style="color: var(--danger); border-color: #FECACA; padding: 2px 4px;" title="Remove size">✕</button>
+    </div>
+  `;
+}
+
+function reindexSizeRadios(prefix) {
+  const rows = document.querySelectorAll(`#${prefix}-sizes-list .size-config-row`);
+  const isMulti = document.getElementById(`${prefix}-size-mode-multi`)?.checked;
+  rows.forEach((row, idx) => {
+    const input = row.querySelector('.size-choice-input');
+    if (input) input.value = idx;
+  });
+}
+
+function removeSizeRow(btn) {
+  const row = btn.closest('.size-config-row');
+  const container = row.parentElement;
+  row.remove();
+  const prefix = container.id.startsWith('add') ? 'add' : 'edit';
+  reindexSizeRadios(prefix);
+}
+
+function addCustomSizeRow(prefix, name = 'Extra Large (XL)', delta = 5.00, isDefault = false, stock = 25) {
+  const list = document.getElementById(`${prefix}-sizes-list`);
+  const idx = list.querySelectorAll('.size-config-row').length;
+  list.insertAdjacentHTML('beforeend', renderSizeRowHtml(prefix, idx, name, delta, isDefault, stock, 'Custom'));
+}
+
+const SIZE_PRESETS = {
+  standard: [
+    { name: 'Small (Individual)', delta: -2.00, isDefault: false, stock: 25, label: 'Small' },
+    { name: 'Medium (Regular)', delta: 0.00, isDefault: true, stock: 50, label: 'Medium' },
+    { name: 'Large (Feast)', delta: 3.50, isDefault: false, stock: 20, label: 'Large' }
+  ],
+  pizza: [
+    { name: 'Small 10" (Personal - 6 slices)', delta: -3.00, isDefault: false, stock: 20, label: '10" Small' },
+    { name: 'Medium 12" (Standard - 8 slices)', delta: 0.00, isDefault: true, stock: 40, label: '12" Med' },
+    { name: 'Large 14" (Party Feast - 10 slices)', delta: 4.50, isDefault: false, stock: 15, label: '14" Large' }
+  ],
+  beverage: [
+    { name: 'Small (8 fl oz)', delta: -1.00, isDefault: false, stock: 60, label: '8oz Small' },
+    { name: 'Medium (12 fl oz Regular)', delta: 0.00, isDefault: true, stock: 80, label: '12oz Med' },
+    { name: 'Large (16 fl oz Grande)', delta: 1.50, isDefault: false, stock: 40, label: '16oz Large' }
+  ],
+  bowl: [
+    { name: 'Small Bowl (Lite Lunch)', delta: -2.50, isDefault: false, stock: 30, label: 'Small' },
+    { name: 'Regular Bowl (Chef Size)', delta: 0.00, isDefault: true, stock: 45, label: 'Regular' },
+    { name: 'Large Protein Feast Bowl', delta: 4.00, isDefault: false, stock: 20, label: 'Large' }
+  ]
+};
+
+function applySizePreset(prefix, presetKey) {
+  const preset = SIZE_PRESETS[presetKey] || SIZE_PRESETS.standard;
+  const list = document.getElementById(`${prefix}-sizes-list`);
+  if (!list) return;
+  list.innerHTML = preset.map((item, idx) => renderSizeRowHtml(prefix, idx, item.name, item.delta, item.isDefault, item.stock, item.label)).join('');
+  syncSizeSelectionMode(prefix);
+  if (window.showToast) window.showToast(`Applied ${presetKey} size preset with daily stock`, 'info');
+}
+
+// Edit Dish Modal with Size Support
+async function openEditDishModal(id, name, catId, price, desc, imgUrl, isVeg, isVegan, isGf, isSpicy, isPop) {
+  const form = document.getElementById('edit-dish-form');
+  form.action = `/partner/menu/item/${id}/edit`;
+  document.getElementById('edit-dish-name').value = name;
+  document.getElementById('edit-dish-category').value = catId;
+  document.getElementById('edit-dish-price').value = parseFloat(price).toFixed(2);
+  document.getElementById('edit-dish-desc').value = desc;
+  document.getElementById('edit-dish-img-url').value = imgUrl;
+  document.getElementById('edit-dish-preview-img').src = imgUrl;
+
+  document.getElementById('edit-dish-veg').checked = Boolean(isVeg);
+  document.getElementById('edit-dish-vegan').checked = Boolean(isVegan);
+  document.getElementById('edit-dish-gf').checked = Boolean(isGf);
+  document.getElementById('edit-dish-spicy').checked = Boolean(isSpicy);
+  document.getElementById('edit-dish-pop').checked = Boolean(isPop);
+
+  // Fetch Dish Details to populate existing sizes, selection mode, and daily stock
+  const editSizesList = document.getElementById('edit-sizes-list');
+  const editToggle = document.getElementById('edit-enable-sizes-toggle');
+  
+  try {
+    const res = await fetch(`/api/menu-items/${id}`);
+    if (res.ok) {
+      const data = await res.json();
+      const sizeGroup = (data.modifier_groups || []).find(g => 
+        g.name.toLowerCase().includes('size') || g.name.toLowerCase().includes('portion')
+      );
+      
+      if (sizeGroup && sizeGroup.options && sizeGroup.options.length > 0) {
+        editToggle.checked = true;
+        toggleSizeOptionsSection('edit', true);
+
+        // Selection mode
+        const isMulti = sizeGroup.max_selection > 1;
+        document.getElementById('edit-size-mode-multi').checked = isMulti;
+        document.getElementById('edit-size-mode-single').checked = !isMulti;
+
+        editSizesList.innerHTML = sizeGroup.options.map((opt, idx) => {
+          let label = 'Size';
+          const lName = opt.name.toLowerCase();
+          if (lName.includes('small') || lName.includes('8') || lName.includes('10')) label = 'Small';
+          else if (lName.includes('medium') || lName.includes('regular') || lName.includes('12')) label = 'Medium';
+          else if (lName.includes('large') || lName.includes('feast') || lName.includes('14') || lName.includes('16')) label = 'Large';
+          const stock = (opt.stock_quantity !== null && opt.stock_quantity !== undefined) ? opt.stock_quantity : 50;
+          return renderSizeRowHtml('edit', idx, opt.name, opt.price_delta, Boolean(opt.is_default || idx === 0), stock, label);
+        }).join('');
+        
+        syncSizeSelectionMode('edit');
+      } else {
+        editToggle.checked = false;
+        toggleSizeOptionsSection('edit', false);
+        document.getElementById('edit-size-mode-single').checked = true;
+        applySizePreset('edit', 'standard');
+      }
+    } else {
+      editToggle.checked = false;
+      toggleSizeOptionsSection('edit', false);
+      applySizePreset('edit', 'standard');
+    }
+  } catch (err) {
+    console.warn('Could not fetch item sizes for edit modal:', err);
+    editToggle.checked = false;
+    toggleSizeOptionsSection('edit', false);
+    applySizePreset('edit', 'standard');
+  }
+
+  document.getElementById('edit-dish-modal').classList.add('active');
+}
+
+function closeEditDishModal() {
+  document.getElementById('edit-dish-modal').classList.remove('active');
+}
+
+function previewEditDishFile(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('edit-dish-preview-img').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// Live Stock Toggle AJAX
+async function toggleDishStock(itemId, checkbox) {
+  try {
+    const res = await fetch(`/partner/menu/item/${itemId}/toggle-stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      const label = document.getElementById(`stock-label-${itemId}`);
+      if (label) {
+        label.textContent = data.status_text;
+        label.style.color = data.is_available ? 'var(--success)' : 'var(--danger)';
+      }
+      if (window.showToast) {
+        showToast(`Item status updated: ${data.status_text}`, data.is_available ? 'success' : 'info');
+      }
+    }
+  } catch (err) {
+    console.error('Stock toggle failed:', err);
+    if (window.showToast) showToast('Failed to update stock status', 'error');
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return text.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Backdrop click dismiss
+document.addEventListener('click', (e) => {
+  ['category-modal', 'add-dish-modal', 'edit-dish-modal'].forEach(id => {
+    const modal = document.getElementById(id);
+    if (modal && e.target === modal) modal.classList.remove('active');
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Help & Support Center | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px; max-width: 900px;">
+  <!-- Help Header -->
+  <div style="text-align: center; margin-bottom: 36px;">
+    <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+      How can we help you today?
+    </h1>
+    <p style="color: var(--text-muted); font-size: 1rem;">
+      Find fast answers to common questions or chat directly with our 24/7 support team.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 340px; gap: 32px; align-items: start;">
+    <!-- FAQ Section -->
+    <div>
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px;">
+        Frequently Asked Questions
+      </h2>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <details style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; cursor: pointer;">
+          <summary style="font-weight: 800; color: var(--secondary); outline: none;">How do I track my active order in real time?</summary>
+          <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+            Once your order is placed, you can visit the <strong>Orders</strong> page or click <strong>Track Live Status</strong> to view the live animated status timeline and real-time courier GPS route.
+          </p>
+        </details>
+
+        <details style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; cursor: pointer;">
+          <summary style="font-weight: 800; color: var(--secondary); outline: none;">What should I do if an item is missing or incorrect?</summary>
+          <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+            We offer a 100% Satisfaction Guarantee. Simply use the Live Chat box on the right or tap "Contact Support" on your order details page, and our team will issue an instant refund or replacement credit.
+          </p>
+        </details>
+
+        <details style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; cursor: pointer;">
+          <summary style="font-weight: 800; color: var(--secondary); outline: none;">How do I apply a discount promo code?</summary>
+          <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+            In your Cart or Checkout page, type your promo code (such as <strong>WELCOME50</strong> or <strong>CRAVE20</strong>) into the promo code box and click <strong>Apply</strong>. Your discount will be calculated instantly.
+          </p>
+        </details>
+
+        <details style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; cursor: pointer;">
+          <summary style="font-weight: 800; color: var(--secondary); outline: none;">How do I switch between Customer, Restaurant, and Courier modes?</summary>
+          <p style="margin-top: 10px; font-size: 0.9rem; color: var(--text-muted); line-height: 1.5;">
+            Use the <strong>Demo Mode Banner</strong> at the top of the screen to switch experiences in 1-click between Customer, Restaurant Kitchen Partner, and Courier Delivery Partner.
+          </p>
+        </details>
+      </div>
+    </div>
+
+    <!-- Live Support Chat Box -->
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; height: 420px;">
+      <div style="background: var(--secondary); color: #FFF; padding: 14px 18px; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 1.2rem;">💬</span>
+        <div>
+          <div style="font-weight: 800; font-size: 0.95rem;">CraveCart Live Support</div>
+          <div style="font-size: 0.75rem; color: var(--success);">● Online • Typical reply under 1 min</div>
+        </div>
+      </div>
+
+      <div id="chat-messages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.88rem; background: var(--bg-muted);">
+        <div style="background: #FFF; border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-md); align-self: flex-start; max-width: 85%;">
+          👋 Hi Alex! How can our support team help you with your order today?
+        </div>
+      </div>
+
+      <div style="padding: 12px; background: #FFF; border-top: 1px solid var(--border-color); display: flex; gap: 8px;">
+        <input type="text" id="chat-input" placeholder="Type a message..." class="promo-input-box" style="flex: 1; padding: 8px 12px; font-size: 0.88rem;">
+        <button id="chat-send-btn" class="btn btn-primary btn-sm">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const sendBtn = document.getElementById('chat-send-btn');
+  const chatInput = document.getElementById('chat-input');
+  const messagesBox = document.getElementById('chat-messages');
+
+  if (sendBtn && chatInput && messagesBox) {
+    const handleSend = () => {
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      // Append user msg
+      const userMsg = document.createElement('div');
+      userMsg.style.cssText = 'background: var(--primary); color: #FFF; padding: 10px 14px; border-radius: var(--radius-md); align-self: flex-end; max-width: 85%;';
+      userMsg.textContent = text;
+      messagesBox.appendChild(userMsg);
+      chatInput.value = '';
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+
+      // Auto response
+      setTimeout(() => {
+        const botMsg = document.createElement('div');
+        botMsg.style.cssText = 'background: #FFF; border: 1px solid var(--border-color); padding: 10px 14px; border-radius: var(--radius-md); align-self: flex-start; max-width: 85%;';
+        botMsg.innerHTML = "Thanks for reaching out! We've noted your inquiry regarding: <em>" + text + "</em>. A live agent is monitoring this demo session and everything is in order.";
+        messagesBox.appendChild(botMsg);
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+      }, 700);
+    };
+
+    sendBtn.addEventListener('click', handleSend);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSend();
+    });
+  }
+});
+</script>
+{% endblock %}

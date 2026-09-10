@@ -1,0 +1,175 @@
+{% extends 'courier/base_courier.html' %}
+
+{% block title %}Deliveries Queue | CraveCart Courier{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">Deliveries Queue</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Active delivery missions allocated directly to you and nearby available pickup broadcasts.
+    </p>
+  </div>
+
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 10px 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-xs);">
+    <span style="font-size: 1.2rem;">🛵</span>
+    <div>
+      <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Courier Duty Status</div>
+      <div style="font-size: 0.88rem; font-weight: 800; color: {% if active_deliveries %}#D97706{% else %}var(--success){% endif %};">
+        {% if active_deliveries %}
+          🛵 {{ active_deliveries|length }} Active Delivery in Progress
+        {% else %}
+          🟢 Free & Ready for New Dispatches
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Active Deliveries Allocated to This Courier -->
+<section style="margin-bottom: 40px;">
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">
+      Assigned & Active Deliveries ({{ active_deliveries|length }})
+    </h2>
+    {% if active_deliveries %}
+    <span class="tag tag-primary" style="font-size: 0.78rem; font-weight: 800;">
+      ⚡ Action Required
+    </span>
+    {% endif %}
+  </div>
+
+  {% if active_deliveries %}
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    {% for deliv in active_deliveries %}
+    <div style="background: #FFF; border: 2px solid {% if deliv.status in ('placed', 'confirmed', 'preparing', 'ready') %}var(--primary){% elif deliv.status == 'on_the_way' %}#3B82F6{% else %}var(--warning){% endif %}; border-radius: var(--radius-xl); padding: 22px; box-shadow: var(--shadow-sm);">
+      
+      <!-- Top Order Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">
+            Order #{{ deliv.order_number }}
+          </h3>
+          <span class="tag {% if deliv.status == 'ready' %}tag-warning{% elif deliv.status in ('picked_up', 'on_the_way') %}tag-primary{% else %}tag-secondary{% endif %}" style="font-weight: 800; font-size: 0.75rem;">
+            {{ deliv.status|replace('_', ' ')|capitalize }}
+          </span>
+          {% if deliv.status in ('placed', 'confirmed', 'preparing', 'ready') %}
+            <span class="tag tag-success" style="font-size: 0.72rem; font-weight: 800; animation: pulse 2s infinite;">
+              🔔 Allocated to You
+            </span>
+          {% endif %}
+        </div>
+
+        <div style="font-size: 1.2rem; font-weight: 800; color: var(--success);">
+          💰 +${{ "%.2f"|format(deliv.delivery_fee + deliv.tip) }}
+          <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">(incl. tip)</span>
+        </div>
+      </div>
+
+      <!-- Pickup & Customer Dropoff Row -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        <div style="background: var(--bg-muted); padding: 12px 14px; border-radius: var(--radius-md);">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🍳 1. Pickup Kitchen</div>
+          <div style="font-weight: 800; font-size: 0.98rem; color: var(--secondary); margin-top: 2px;">{{ deliv.restaurant_name }}</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">📍 {{ deliv.restaurant_address }}</div>
+        </div>
+
+        <div style="background: var(--bg-muted); padding: 12px 14px; border-radius: var(--radius-md);">
+          <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🏠 2. Customer Dropoff</div>
+          <div style="font-weight: 800; font-size: 0.98rem; color: var(--secondary); margin-top: 2px;">Customer Delivery</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+            {% if deliv.delivery_instructions %}
+              📝 Note: "{{ deliv.delivery_instructions }}"
+            {% else %}
+              Standard contactless doorstep delivery
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <div>
+          <a href="{{ url_for('courier_delivery_detail', order_number=deliv.order_number) }}" class="btn btn-outline btn-sm" style="font-weight: 700;">
+            🧭 Open Live GPS Map & Details →
+          </a>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          {% if deliv.status in ('placed', 'confirmed', 'preparing', 'ready') %}
+            <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="picked_up" style="font-weight: 800; padding: 10px 20px;">
+              📦 Accept Mission & Confirm Food Picked Up
+            </button>
+          {% elif deliv.status == 'picked_up' %}
+            <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="on_the_way" style="font-weight: 800; padding: 10px 20px;">
+              🛵 Depart Towards Customer (Out for Delivery)
+            </button>
+          {% elif deliv.status == 'on_the_way' %}
+            <button class="btn btn-primary btn-md mission-step-btn" data-order-number="{{ deliv.order_number }}" data-next-status="delivered" style="background: var(--success); font-weight: 800; padding: 10px 22px;">
+              🎉 Confirm Hand-off & Mark Order Delivered
+            </button>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="background: #FFF; border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 32px; text-align: center;">
+    <div style="font-size: 2rem; margin-bottom: 8px;">🟢</div>
+    <div style="font-weight: 800; font-size: 1.05rem; color: var(--secondary); margin-bottom: 4px;">You are completely free & available for new deliveries!</div>
+    <div style="color: var(--text-muted); font-size: 0.88rem;">When a restaurant manager allocates an order to you, it will show up right here with instant notification.</div>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Available Open Pool Broadcasts -->
+<section>
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">
+      Nearby Available Pickup Broadcasts (Open Pool)
+    </h2>
+    <span class="tag tag-secondary" style="font-size: 0.78rem;">
+      📡 Open to Any Driver
+    </span>
+  </div>
+
+  {% if available_orders %}
+  <div style="display: flex; flex-direction: column; gap: 14px;">
+    {% for ord in available_orders %}
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow-xs);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <span style="font-weight: 800; font-size: 1.05rem; color: var(--secondary);">
+            {{ ord.restaurant_name }}
+          </span>
+          <span class="tag tag-primary" style="font-size: 0.72rem; font-weight: 700;">#{{ ord.order_number }}</span>
+          <span class="tag tag-warning" style="font-size: 0.72rem;">{{ ord.status|capitalize }}</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          📍 {{ ord.restaurant_address }}
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="text-align: right;">
+          <div style="font-weight: 800; color: var(--success); font-size: 1.15rem;">
+            +${{ "%.2f"|format(ord.delivery_fee + ord.tip) }}
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted);">Estimated Payout</div>
+        </div>
+        <button class="btn btn-secondary btn-md mission-step-btn" data-order-number="{{ ord.order_number }}" data-next-status="picked_up" style="font-weight: 800;">
+          ⚡ Claim & Pick Up
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+    No open broadcasts pending courier pickup in the zone right now.
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

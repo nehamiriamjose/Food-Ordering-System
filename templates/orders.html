@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Orders | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 32px; max-width: 960px;">
+  <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 24px;">
+    Order History
+  </h1>
+
+  <!-- Active Orders -->
+  {% if active_orders %}
+  <section style="margin-bottom: 40px;">
+    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+      <span>🛵</span> Active Deliveries ({{ active_orders|length }})
+    </h2>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      {% for o in active_orders %}
+      <div style="background: #FFF; border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">{{ o.restaurant_name }}</h3>
+              <span class="tag tag-primary">{{ o.status|replace('_', ' ')|capitalize }}</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+              Order #{{ o.order_number }} • ${{ "%.2f"|format(o.total) }} • ETA: <strong>{{ o.estimated_delivery_time }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <a href="{{ url_for('order_tracking', order_number=o.order_number) }}" class="btn btn-primary btn-sm" style="padding: 10px 20px;">
+            🚀 Track Live Status
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Past Orders -->
+  <section style="margin-bottom: 40px;">
+    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px;">
+      Past Orders
+    </h2>
+
+    {% if past_orders %}
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      {% for o in past_orders %}
+      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-xs); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">{{ o.restaurant_name }}</h3>
+              <span class="tag tag-success">✓ Delivered</span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">
+              Placed on {{ o.created_at }} • ${{ "%.2f"|format(o.total) }}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              {% for it in o.order_items %}
+                {{ it.quantity }}x {{ it.name }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <a href="{{ url_for('order_confirmation', order_number=o.order_number) }}" class="btn btn-outline btn-sm">
+            View Receipt
+          </a>
+          <a href="{{ url_for('restaurant_detail', restaurant_id=o.restaurant_id) }}" class="btn btn-secondary btn-sm">
+            🔄 Reorder
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 30px; text-align: center; color: var(--text-muted);">
+      No past orders found.
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

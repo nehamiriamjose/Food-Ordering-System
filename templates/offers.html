@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Deals & Promotional Offers | CraveCart{% endblock %}
+
+{% block content %}
+<style>
+  @keyframes urgentPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.02); opacity: 0.85; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pulse-urgent {
+    animation: urgentPulse 1.8s infinite ease-in-out;
+  }
+</style>
+
+<div class="container" style="padding-top: 32px; padding-bottom: 60px;">
+  <div style="text-align: center; max-width: 620px; margin: 0 auto 36px;">
+    <span class="tag tag-primary" style="font-size: 0.85rem; padding: 6px 14px; margin-bottom: 8px;">🎉 Crave & Save</span>
+    <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+      Exclusive CraveCart Deals & Countdowns
+    </h1>
+    <p style="color: var(--text-muted); font-size: 1rem;">
+      Apply these promo codes at checkout to unlock instant discounts and free delivery before the timer runs out!
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px;">
+    {% for promo in promos %}
+    <div id="customer-promo-{{ promo.id }}" 
+         class="customer-promo-card"
+         data-promo-id="{{ promo.id }}"
+         data-expires-at="{{ promo.expires_at or '' }}"
+         style="background: #FFF; border: 1.5px solid var(--border-color); border-radius: var(--radius-xl); padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; transition: all 0.3s ease;">
+      
+      <!-- Accent Top Line -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--primary), var(--accent));"></div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px;">
+          <span class="tag tag-warning" style="font-weight: 800; font-size: 0.85rem; padding: 4px 10px;">
+            {% if promo.discount_type == 'percent' %}{{ promo.discount_value|int }}% OFF{% else %}${{ "%.2f"|format(promo.discount_value) }} OFF{% endif %}
+          </span>
+          <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Min spend: ${{ "%.2f"|format(promo.min_spend) }}</span>
+        </div>
+
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin-bottom: 6px; line-height: 1.3;">
+          {{ promo.description }}
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Valid on all gourmet restaurants across CraveCart. Max discount up to ${{ "%.2f"|format(promo.max_discount) }}.
+        </p>
+
+        <!-- Live Countdown Badge -->
+        <div id="countdown-banner-{{ promo.id }}" 
+             style="background: rgba(244, 81, 58, 0.06); border: 1px solid rgba(244, 81, 58, 0.2); border-radius: var(--radius-md); padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span id="clock-emoji-{{ promo.id }}" style="font-size: 1.1rem;">⏳</span>
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Offer Ends In:</span>
+          </div>
+          <div id="countdown-val-{{ promo.id }}" style="font-family: monospace; font-size: 0.95rem; font-weight: 800; color: var(--primary);">
+            Calculating...
+          </div>
+        </div>
+      </div>
+
+      <!-- Promo Code Box with Copy Button -->
+      <div id="code-box-{{ promo.id }}" style="background: var(--bg-muted); border: 1.5px dashed var(--primary); border-radius: var(--radius-md); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-family: monospace; font-size: 1.25rem; font-weight: 900; color: var(--primary); letter-spacing: 1.5px;">
+          {{ promo.code }}
+        </span>
+        <button id="copy-btn-{{ promo.id }}" class="btn btn-primary btn-sm" onclick="copyPromoAndToast('{{ promo.code }}', this)" style="font-weight: 700; padding: 6px 14px;">
+          Copy Code
+        </button>
+      </div>
+    </div>
+    {% else %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #FFF; border-radius: var(--radius-xl); border: 2px dashed var(--border-color);">
+      <div style="font-size: 3.5rem; margin-bottom: 12px;">🎟️</div>
+      <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">No Active Deals Right Now</h3>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 440px; margin: 0 auto;">
+        Check back soon for fresh flash sales and holiday coupon drops!
+      </p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function copyPromoAndToast(code, btn) {
+  navigator.clipboard.writeText(code).then(() => {
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.style.background = 'var(--success)';
+    if (window.showToast) {
+      window.showToast(`Code ${code} copied to clipboard! Apply at checkout for instant savings.`, 'success');
+    }
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+    }, 2000);
+  });
+}
+
+// Live Countdown Runner
+function initCustomerOfferTimers() {
+  const cards = document.querySelectorAll('.customer-promo-card');
+
+  function update() {
+    const now = new Date().getTime();
+
+    cards.forEach(card => {
+      const promoId = card.getAttribute('data-promo-id');
+      const expiresAt = card.getAttribute('data-expires-at');
+      const countVal = document.getElementById(`countdown-val-${promoId}`);
+      const banner = document.getElementById(`countdown-banner-${promoId}`);
+      const clockEmoji = document.getElementById(`clock-emoji-${promoId}`);
+      const copyBtn = document.getElementById(`copy-btn-${promoId}`);
+
+      if (!countVal) return;
+
+      if (!expiresAt) {
+        countVal.textContent = 'Ongoing Deal';
+        return;
+      }
+
+      const expiryDate = new Date(expiresAt.replace(' ', 'T')).getTime();
+      const distance = expiryDate - now;
+
+      if (distance <= 0) {
+        // EXPIRED
+        countVal.textContent = 'Sale Ended (00:00:00)';
+        countVal.style.color = '#DC2626';
+        if (clockEmoji) clockEmoji.textContent = '⌛';
+        if (banner) {
+          banner.style.background = '#FEE2E2';
+          banner.style.borderColor = '#FCA5A5';
+          banner.classList.remove('pulse-urgent');
+        }
+        if (copyBtn) {
+          copyBtn.disabled = true;
+          copyBtn.textContent = 'Expired';
+          copyBtn.style.opacity = '0.6';
+          copyBtn.style.cursor = 'not-allowed';
+        }
+        card.style.opacity = '0.7';
+        card.style.background = '#F8FAFC';
+      } else {
+        // ACTIVE
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const formatted = `${days > 0 ? days + 'd ' : ''}${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+
+        countVal.textContent = formatted;
+
+        // Visual Urgency for flash deals (<24h)
+        if (distance < 24 * 60 * 60 * 1000) {
+          countVal.style.color = '#EA580C';
+          if (clockEmoji) clockEmoji.textContent = '🔥';
+          if (banner) {
+            banner.style.background = 'rgba(234, 88, 12, 0.08)';
+            banner.style.borderColor = '#FDBA74';
+            banner.classList.add('pulse-urgent');
+          }
+        } else {
+          countVal.style.color = 'var(--primary)';
+          if (clockEmoji) clockEmoji.textContent = '⏳';
+          if (banner) {
+            banner.style.background = 'rgba(244, 81, 58, 0.06)';
+            banner.style.borderColor = 'rgba(244, 81, 58, 0.2)';
+            banner.classList.remove('pulse-urgent');
+          }
+        }
+      }
+    });
+  }
+
+  update();
+  setInterval(update, 1000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initCustomerOfferTimers();
+});
+</script>
+{% endblock %}

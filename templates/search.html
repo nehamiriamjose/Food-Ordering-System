@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Search "{{ search_query }}" | CraveCart{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 30px;">
+  <!-- Search Header Input -->
+  <div style="max-width: 680px; margin: 0 auto 36px;">
+    <form action="{{ url_for('search') }}" method="GET" class="search-input-box" style="padding: 12px 20px; font-size: 1.05rem;">
+      <span style="font-size: 1.2rem; color: var(--text-muted); margin-right: 8px;">🔍</span>
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search restaurants, cuisines, or dishes..." autofocus>
+      <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    </form>
+
+    <!-- Quick Cuisine Chips -->
+    <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px;">
+      {% for c in cuisines %}
+      <a href="{{ url_for('search', q=c.name) }}" class="tag tag-secondary" style="padding: 6px 12px; font-size: 0.82rem;">
+        {{ c.icon }} {{ c.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if search_query %}
+    <!-- Group 1: Matching Restaurants -->
+    <section style="margin-bottom: 48px;">
+      <div class="section-header">
+        <h2 class="section-title">Matching Restaurants ({{ restaurants|length }})</h2>
+      </div>
+
+      {% if restaurants %}
+      <div class="restaurants-grid">
+        {% for rest in restaurants %}
+        <div class="restaurant-card">
+          <div class="card-image-wrap">
+            <img src="{{ rest.image_url }}" alt="{{ rest.name }}" class="restaurant-cover-img">
+            <button class="card-favorite-btn {% if rest.id in fav_rest_ids %}active{% endif %}" data-restaurant-id="{{ rest.id }}">
+              {% if rest.id in fav_rest_ids %}❤️{% else %}🤍{% endif %}
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="card-header-row">
+              <h3 class="restaurant-title">
+                <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}">{{ rest.name }}</a>
+              </h3>
+              <div class="rating-badge">
+                {% if rest.review_count and rest.review_count > 0 and rest.rating %}
+                  ⭐ {{ "%.1f"|format(rest.rating) }}
+                {% else %}
+                  ✨ New
+                {% endif %}
+              </div>
+            </div>
+            <p class="card-cuisine-desc">{{ rest.cuisine }} • {{ rest.price_level }}</p>
+            <div class="card-meta-row">
+              <div class="meta-item">⏱️ {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</div>
+              <div class="meta-item">🚴 ${{ "%.2f"|format(rest.delivery_fee) }}</div>
+              <div class="meta-item" style="margin-left: auto;">
+                <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm">View Menu</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-align: center; color: var(--text-muted);">
+        No restaurant names matched "{{ search_query }}".
+      </div>
+      {% endif %}
+    </section>
+
+    <!-- Group 2: Matching Dishes -->
+    <section style="margin-bottom: 48px;">
+      <div class="section-header">
+        <h2 class="section-title">Matching Dishes ({{ dishes|length }})</h2>
+      </div>
+
+      {% if dishes %}
+      <div class="menu-items-grid">
+        {% for dish in dishes %}
+        <div class="menu-item-card" data-item-id="{{ dish.id }}">
+          <div class="item-info-col">
+            <div style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px;">
+              From {{ dish.restaurant_name }} (⭐ {{ dish.restaurant_rating }})
+            </div>
+            <h3 class="item-name">{{ dish.name }}</h3>
+            <p class="item-desc">{{ dish.description }}</p>
+            <div class="item-price">${{ "%.2f"|format(dish.price) }}</div>
+          </div>
+          <div class="item-image-col">
+            <img src="{{ dish.image_url }}" alt="{{ dish.name }}" class="item-img">
+            <button class="item-add-btn btn-customize-dish" data-item-id="{{ dish.id }}">
+              + ADD
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-align: center; color: var(--text-muted);">
+        No dishes matched "{{ search_query }}".
+      </div>
+      {% endif %}
+    </section>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3 class="empty-title">Search for your favorite food</h3>
+    <p class="empty-desc">Find artisan pizzas, healthy bowls, sushi rolls, tacos, burgers, and decadent desserts near you.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ restaurant.name }} Menu & Delivery | CraveCart{% endblock %}
+
+{% block content %}
+<!-- Restaurant Hero Banner -->
+<div class="restaurant-hero-header">
+  <div class="restaurant-cover-banner">
+    <img src="{{ restaurant.image_url }}" alt="{{ restaurant.name }}" class="restaurant-banner-img">
+    <div class="banner-overlay"></div>
+  </div>
+
+  <div class="container">
+    <div class="restaurant-info-bar">
+      <div class="restaurant-main-details">
+        <div class="restaurant-name-row">
+          <h1 class="restaurant-name-h1">{{ restaurant.name }}</h1>
+          <span class="verified-badge">✓ Verified Kitchen</span>
+          {% if restaurant.is_open %}
+          <span class="tag tag-success">● Open Now</span>
+          {% else %}
+          <span class="tag tag-danger">Closed</span>
+          {% endif %}
+        </div>
+
+        <div class="restaurant-tags-row">
+          <span>{{ restaurant.cuisine }}</span>
+          <span>•</span>
+          <span>{{ restaurant.price_level }}</span>
+          <span>•</span>
+          <span>📍 {{ restaurant.address }}</span>
+          <span>•</span>
+          <span>📞 {{ restaurant.phone }}</span>
+        </div>
+
+        <div class="restaurant-metrics-grid">
+          <div class="metric-box">
+            <span class="metric-label">Rating</span>
+            <span class="metric-value" style="color: #D97706;">
+              {% if restaurant.review_count and restaurant.review_count > 0 and restaurant.rating %}
+                ⭐ {{ "%.1f"|format(restaurant.rating) }} ({{ restaurant.review_count }}+)
+              {% else %}
+                ✨ New (0 reviews)
+              {% endif %}
+            </span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Estimated Delivery</span>
+            <span class="metric-value">⏱️ {{ restaurant.delivery_time_min }}–{{ restaurant.delivery_time_max }} mins</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Delivery Fee</span>
+            <span class="metric-value">🚴 ${{ "%.2f"|format(restaurant.delivery_fee) }}</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">Min. Order</span>
+            <span class="metric-value">${{ "%.2f"|format(restaurant.min_order) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="restaurant-action-buttons">
+        <button class="btn btn-outline fav-toggle-btn {% if is_favorite %}active{% endif %}" data-restaurant-id="{{ restaurant.id }}">
+          {% if is_favorite %}❤️ Favorited{% else %}🤍 Save to Favorites{% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sticky Menu Category Navigation Bar -->
+<div class="sticky-menu-nav">
+  <div class="container">
+    <div class="menu-nav-list">
+      {% for cat in menu_categories %}
+      <a href="#category-{{ cat.id }}" class="menu-nav-link {% if loop.first %}active{% endif %}">
+        {{ cat.name }}
+      </a>
+      {% endfor %}
+      <a href="#reviews-section" class="menu-nav-link">Reviews ({{ reviews|length }})</a>
+    </div>
+  </div>
+</div>
+
+<!-- Main Two-Column Layout: Menu + Sticky Mini Cart -->
+<div class="container">
+  <div class="restaurant-content-layout">
+    <!-- Left Column: Menu Categories & Dishes -->
+    <div class="menu-sections-wrapper">
+      {% for cat in menu_categories %}
+      <div class="menu-category-section" id="category-{{ cat.id }}">
+        <h2 class="menu-category-title">{{ cat.name }}</h2>
+
+        <div class="menu-items-grid">
+          {% for item in cat.dishes %}
+          <div class="menu-item-card" data-item-id="{{ item.id }}">
+            <div class="item-info-col">
+              <div class="item-tags-row">
+                {% if item.is_popular %}<span class="tag tag-warning">🔥 Popular</span>{% endif %}
+                {% if item.is_vegetarian %}<span class="tag tag-success">🌱 Veg</span>{% endif %}
+                {% if item.is_vegan %}<span class="tag tag-success">🌿 Vegan</span>{% endif %}
+                {% if item.is_spicy %}<span class="tag tag-danger">🌶️ Spicy</span>{% endif %}
+                {% if item.is_gluten_free %}<span class="tag tag-primary">🌾 GF</span>{% endif %}
+              </div>
+              <h3 class="item-name">{{ item.name }}</h3>
+              <p class="item-desc">{{ item.description }}</p>
+              <div class="item-price">${{ "%.2f"|format(item.price) }}</div>
+            </div>
+
+            <div class="item-image-col">
+              <img src="{{ item.image_url }}" alt="{{ item.name }}" class="item-img">
+              <button class="item-add-btn btn-customize-dish" data-item-id="{{ item.id }}" title="Customize and add to cart">
+                + ADD
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Customer Reviews Section -->
+      <div id="reviews-section" style="margin-top: 50px; padding-top: 30px; border-top: 2px solid var(--border-color);">
+        <h2 class="menu-category-title">Customer Reviews & Ratings</h2>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          {% for rev in reviews %}
+          <div style="flex: 1 1 calc(50% - 20px); min-width: 280px; background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 800; font-size: 0.95rem;">{{ rev.user_name }}</span>
+              <span style="color: #D97706; font-weight: 700; font-size: 0.88rem;">⭐ {{ rev.rating }}.0</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.45;">"{{ rev.comment }}"</p>
+            <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 8px;">Verified CraveCart Customer</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Sticky Mini Cart -->
+    <aside class="sticky-mini-cart">
+      <div class="mini-cart-header">
+        <h3 class="mini-cart-title">Your Order</h3>
+        <span class="tag tag-primary">{{ restaurant.name }}</span>
+      </div>
+
+      <div class="mini-cart-items-list" id="mini-cart-items-list">
+        {% if cart_items and cart_restaurant_id == restaurant.id %}
+          {% for c_item in cart_items %}
+          <div class="mini-cart-item">
+            <div>
+              <div style="font-weight: 700; color: var(--secondary);">{{ c_item.quantity }}x {{ c_item.item_name }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${{ "%.2f"|format(c_item.item_total) }}</div>
+            </div>
+            <button onclick="updateCartItemQty({{ c_item.id }}, -1)" style="color: var(--danger); font-size: 0.8rem; font-weight: 700;">Remove</button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; color: var(--text-muted); padding: 24px 0; font-size: 0.88rem;">
+            🛒 Your order is currently empty.<br>Click <strong>+ ADD</strong> on any dish to begin!
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="mini-cart-totals">
+        <div class="mini-cart-row">
+          <span>Subtotal</span>
+          <span id="mini-cart-subtotal">${{ "%.2f"|format(cart_subtotal) }}</span>
+        </div>
+        <div class="mini-cart-row">
+          <span>Delivery Fee</span>
+          <span>${{ "%.2f"|format(restaurant.delivery_fee) }}</span>
+        </div>
+        <div class="mini-cart-row total">
+          <span>Estimated Total</span>
+          <span>${{ "%.2f"|format(cart_subtotal + restaurant.delivery_fee if cart_subtotal > 0 else 0) }}</span>
+        </div>
+      </div>
+
+      <a href="{{ url_for('cart') }}" class="btn btn-primary btn-block btn-lg" id="mini-cart-checkout-btn">
+        View Cart & Checkout →
+      </a>
+    </aside>
+  </div>
+</div>
+{% endblock %}

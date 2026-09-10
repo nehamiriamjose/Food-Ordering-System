@@ -1,0 +1,783 @@
+/* ==========================================================================
+   CART, CHECKOUT & LIVE ORDER TRACKING STYLES
+   ========================================================================== */
+
+/* Cart Review Page Layout */
+.cart-page-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  align-items: start;
+}
+
+.cart-items-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.cart-restaurant-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+}
+
+.cart-restaurant-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.cart-item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--border-color);
+  gap: 16px;
+}
+
+.cart-item-details {
+  flex: 1;
+}
+
+.cart-item-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--secondary);
+}
+
+.cart-item-mods {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.cart-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cart-item-price {
+  font-weight: 800;
+  font-size: 1.05rem;
+  min-width: 70px;
+  text-align: right;
+}
+
+.cart-summary-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.promo-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.promo-input-box {
+  flex: 1;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.promo-applied-tag {
+  background: var(--success-light);
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 16px;
+}
+
+/* ==========================================================================
+   CHECKOUT PAGE STYLES
+   ========================================================================== */
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 32px;
+  align-items: start;
+}
+
+.checkout-step-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.checkout-step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.step-num-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.step-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.saved-addresses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.address-select-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.address-select-card:hover {
+  border-color: var(--primary);
+}
+
+.address-select-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.tip-options-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.tip-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-color);
+  background: #FFF;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.tip-btn:hover, .tip-btn.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ==========================================================================
+   ORDER CONFIRMATION & CELEBRATION
+   ========================================================================== */
+.confirmation-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.celebration-icon-box {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--success-light);
+  color: var(--success);
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  animation: pulseSuccess 1.5s infinite;
+}
+
+@keyframes pulseSuccess {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* ==========================================================================
+   LIVE ORDER TRACKING PAGE
+   ========================================================================== */
+.tracking-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 32px;
+  align-items: start;
+}
+
+.tracking-status-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+.tracking-eta-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.eta-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 800;
+  font-size: 1.25rem;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+}
+
+/* Status Timeline Nodes */
+.timeline-container {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin: 30px 0;
+}
+
+.timeline-progress-bar {
+  position: absolute;
+  top: 18px;
+  left: 30px;
+  right: 30px;
+  height: 4px;
+  background: var(--border-color);
+  z-index: 1;
+}
+
+.timeline-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.6s ease;
+}
+
+.timeline-step {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 80px;
+  text-align: center;
+}
+
+.timeline-node {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #FFF;
+  border: 3px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+
+.timeline-step.completed .timeline-node {
+  background: var(--success);
+  border-color: var(--success);
+  color: #FFF;
+}
+
+.timeline-step.active .timeline-node {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #FFF;
+  box-shadow: 0 0 0 6px var(--primary-glow);
+  animation: pulseNode 1.5s infinite;
+}
+
+@keyframes pulseNode {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.timeline-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.timeline-step.active .timeline-label {
+  color: var(--primary);
+}
+
+/* Map Simulation Visualizer */
+.tracking-map-box {
+  width: 100%;
+  height: 320px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  background: #E5E7EB;
+  border: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+
+.map-svg-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.courier-driver-card {
+  background: #FFF;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.driver-info-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.driver-avatar-img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   INTERACTIVE PAYMENT GATEWAY & REALISTIC MULTI-METHOD UI
+   ========================================================================== */
+
+/* Payment Navigation Tabs */
+.payment-tabs-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  background: var(--bg-muted);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.payment-tab-btn {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.payment-tab-btn:hover {
+  color: var(--secondary);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.payment-tab-btn.active {
+  background: #FFF;
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.payment-tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.payment-tab-content.active {
+  display: block;
+}
+
+/* 3D Realistic Card Preview Component */
+.card-preview-wrapper {
+  perspective: 1000px;
+  margin: 0 auto 24px;
+  max-width: 380px;
+}
+
+.card-preview-inner {
+  width: 100%;
+  height: 220px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 50%, #334155 100%);
+  color: #FFF;
+  padding: 22px 26px;
+  position: relative;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.35);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-style: preserve-3d;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.card-preview-inner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(244, 81, 58, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.card-chip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-emv-chip {
+  width: 44px;
+  height: 32px;
+  background: linear-gradient(135deg, #FCD34D 0%, #D97706 100%);
+  border-radius: 6px;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.card-emv-chip::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(0,0,0,0.25);
+  border-radius: 3px;
+}
+
+.card-brand-display {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #FFF;
+  font-style: italic;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.card-number-display {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.35rem;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  margin: 14px 0 6px;
+}
+
+.card-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.card-holder-label, .card-expiry-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #94A3B8;
+  letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+
+.card-holder-val, .card-expiry-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* UPI Apps Grid */
+.upi-apps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.upi-app-card {
+  border: 2px solid var(--border-color);
+  background: #FFF;
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.upi-app-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.upi-app-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.upi-app-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: var(--bg-muted);
+}
+
+.upi-app-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--secondary);
+}
+
+/* Dynamic QR Code Box */
+.qr-scanner-card {
+  background: #FFF;
+  border: 2px dashed #93C5FD;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.qr-code-img-wrap {
+  width: 170px;
+  height: 170px;
+  margin: 0 auto 16px;
+  padding: 12px;
+  background: #FFF;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.qr-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #3B82F6, transparent);
+  box-shadow: 0 0 10px #3B82F6;
+  animation: scanLine 2s linear infinite;
+}
+
+@keyframes scanLine {
+  0% { top: 10%; opacity: 0; }
+  50% { opacity: 1; }
+  100% { top: 90%; opacity: 0; }
+}
+
+/* Net Banking Grid */
+.bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.bank-option-card {
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: #FFF;
+  transition: var(--transition);
+}
+
+.bank-option-card:hover {
+  border-color: var(--primary);
+}
+
+.bank-option-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* ==========================================================================
+   REALISTIC BANK 3D-SECURE / OTP GATEWAY MODAL SIMULATOR
+   ========================================================================== */
+.gateway-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.gateway-modal-backdrop.active {
+  display: flex;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.gateway-modal-card {
+  background: #FFF;
+  border-radius: 24px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  animation: scaleUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.gateway-modal-header {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  color: #FFF;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gateway-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.gateway-security-badge {
+  font-size: 0.72rem;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34D399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gateway-modal-body {
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.otp-inputs-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.otp-box {
+  width: 46px;
+  height: 54px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--secondary);
+  background: var(--bg-muted);
+  transition: var(--transition);
+}
+
+.otp-box:focus {
+  border-color: var(--primary);
+  background: #FFF;
+  box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+.gateway-spinner {
+  width: 56px;
+  height: 56px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+
+.gateway-success-check {
+  width: 64px;
+  height: 64px;
+  background: #10B981;
+  color: #FFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 16px auto;
+  box-shadow: 0 0 0 12px rgba(16, 185, 129, 0.2);
+  animation: scaleUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (max-width: 992px) {
+  .cart-page-layout, .checkout-layout, .tracking-layout {
+    grid-template-columns: 1fr;
+  }
+}
