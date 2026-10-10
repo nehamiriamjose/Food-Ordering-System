@@ -27,13 +27,17 @@
       <!-- Horizontal Scrollable Cuisine Pills -->
       <div class="cuisine-scroll-container">
         <a href="{{ url_for('restaurants_list', sort=selected_sort) }}" class="cuisine-filter-pill {% if not selected_cuisine %}active{% endif %}">
-          <span class="pill-icon">🍽️</span>
-          <span>All Cuisines</span>
+          <span class="pill-photo-avatar">
+            <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&auto=format&fit=crop&q=80" alt="All Cuisines" class="pill-avatar-img">
+          </span>
+          <span class="pill-title">All Cuisines</span>
         </a>
         {% for c in cuisines %}
         <a href="{{ url_for('restaurants_list', cuisine=c.name, sort=selected_sort) }}" class="cuisine-filter-pill {% if selected_cuisine == c.name %}active{% endif %}">
-          <span class="pill-icon">{{ c.icon }}</span>
-          <span>{{ c.name }}</span>
+          <span class="pill-photo-avatar">
+            <img src="{{ c.image_url }}" alt="{{ c.name }}" class="pill-avatar-img" loading="lazy">
+          </span>
+          <span class="pill-title">{{ c.name }}</span>
         </a>
         {% endfor %}
       </div>
@@ -91,10 +95,12 @@
 
         <div class="card-meta-row">
           <div class="meta-item">
-            <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span>{{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</span>
           </div>
           <div class="meta-item">
-            <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }} delivery
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            <span>${{ "%.2f"|format(rest.delivery_fee) }} delivery</span>
           </div>
           <div class="meta-item" style="margin-left: auto;">
             <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">View Menu</a>

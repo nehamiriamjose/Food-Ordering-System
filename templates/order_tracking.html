@@ -3,26 +3,87 @@
 {% block title %}Tracking Order {{ order.order_number }} | CraveCart{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 32px;" id="tracking-container" data-order-status="{{ order.status }}">
+<div class="container" style="padding-top: 32px; padding-bottom: 60px;" id="tracking-container" data-order-status="{{ order.status }}">
+  
+  <!-- Breadcrumb & Top Controls -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
     <div>
+      <div style="margin-bottom: 6px;">
+        <a href="{{ url_for('orders_list') }}" style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted); text-decoration: none;">
+          ← Back to Order History
+        </a>
+      </div>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary);" id="tracking-order-number" data-order-number="{{ order.order_number }}">
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin: 0;" id="tracking-order-number" data-order-number="{{ order.order_number }}">
           Order {{ order.order_number }}
         </h1>
-        <span class="tag tag-primary" style="font-size: 0.85rem;">Live Tracking</span>
+        <span class="tag {% if order.status == 'delivered' %}tag-success{% else %}tag-primary{% endif %}" id="tracking-status-badge" style="font-size: 0.85rem; font-weight: 700;">
+          {% if order.status == 'delivered' %}✓ Delivered{% else %}Live Tracking{% endif %}
+        </span>
       </div>
-      <p style="color: var(--text-muted); font-size: 0.9rem;">
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin: 4px 0 0 0;">
         From <strong>{{ restaurant.name }}</strong> • Placed on {{ order.created_at }}
       </p>
     </div>
 
-    <!-- Simulator Button for easy testing -->
-    <div style="display: flex; align-items: center; gap: 10px;">
+    <!-- Simulator & Quick Action Buttons -->
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <a href="{{ url_for('orders_list') }}" class="btn btn-outline btn-sm">
+        📜 Order History
+      </a>
       <button class="btn btn-secondary btn-sm" id="sim-advance-status-btn" title="Simulate progressing to the next order step">
         ⚡ Advance Demo Status →
       </button>
     </div>
+  </div>
+
+  <!-- Delivery Arrival Action / Completed Banner -->
+  <div id="delivery-action-banner-wrap">
+    {% if order.status != 'delivered' %}
+    <div class="delivery-arrival-card" id="delivery-arrival-box" style="background: #FFF; border: 2px solid var(--primary); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(244, 81, 58, 0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 2.2rem; background: var(--primary-light); width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          🛵
+        </div>
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin: 0 0 4px 0;">
+            Food Arrived at Your Location?
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0;">
+            When your courier hands over your meal, confirm receipt below to mark the order as delivered and archive it in your Order History.
+          </p>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-md" id="customer-mark-delivered-btn" data-order="{{ order.order_number }}" data-rest="{{ restaurant.name }}" style="padding: 12px 24px; font-weight: 800; white-space: nowrap;">
+        ✓ I Have Received My Order
+      </button>
+    </div>
+    {% else %}
+    <div class="delivery-completed-banner" id="delivery-completed-box" style="background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border: 2px solid var(--success); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 2.4rem; background: #FFF; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-xs); flex-shrink: 0;">
+          🎉
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: #065F46; margin: 0;">Order Delivered Successfully!</h3>
+            <span class="tag tag-success" style="font-weight: 800;">✓ Archived in History</span>
+          </div>
+          <p style="color: #047857; font-size: 0.88rem; margin: 0;">
+            Your meal has been delivered. You can re-order anytime or rate your experience with {{ restaurant.name }}.
+          </p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary btn-sm open-tracking-review-btn" data-order="{{ order.order_number }}" data-rest="{{ restaurant.name }}" style="font-weight: 800;">
+          ⭐ Rate & Review Meal
+        </button>
+        <a href="{{ url_for('orders_list') }}" class="btn btn-secondary btn-sm" style="font-weight: 700;">
+          📜 View in Order History
+        </a>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="tracking-layout">
@@ -33,7 +94,7 @@
         <div class="tracking-eta-header">
           <div>
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Estimated Delivery Time</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--secondary);">{{ order.estimated_delivery_time }}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--secondary);" id="eta-display-text">{{ order.estimated_delivery_time }}</div>
           </div>
           <div class="eta-badge" id="current-status-title">
             {{ order.status|replace('_', ' ')|capitalize }}
@@ -217,7 +278,16 @@
           {% endif %}
         </div>
 
-        <div style="margin-top: 20px; text-align: center;">
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+          <a href="{{ url_for('order_confirmation', order_number=order.order_number) }}" class="btn btn-outline btn-block btn-sm">
+            🧾 Full Receipt View
+          </a>
+          <a href="{{ url_for('orders_list') }}" class="btn btn-secondary btn-block btn-sm">
+            📜 View All Orders in History
+          </a>
+        </div>
+
+        <div style="margin-top: 16px; text-align: center;">
           <a href="{{ url_for('help_center') }}" style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">
             Need help with this order? Contact Support →
           </a>
@@ -225,6 +295,39 @@
       </div>
     </div>
   </div>
+
+  <!-- REVIEW MODAL -->
+  <div class="deals-drawer-backdrop" id="tracking-review-modal">
+    <div class="deals-drawer-container" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;" id="t-review-rest-title">Rate Your Meal</h3>
+        <button type="button" class="modal-close-btn" id="close-t-review-modal-btn">✕</button>
+      </div>
+
+      <input type="hidden" id="t-review-order-number" value="{{ order.order_number }}">
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 10px;">Select Rating</label>
+        <div style="font-size: 2.2rem; display: flex; justify-content: center; gap: 8px; cursor: pointer;" id="t-star-rating-row">
+          <span data-star="1" class="t-star-rating-star">⭐</span>
+          <span data-star="2" class="t-star-rating-star">⭐</span>
+          <span data-star="3" class="t-star-rating-star">⭐</span>
+          <span data-star="4" class="t-star-rating-star">⭐</span>
+          <span data-star="5" class="t-star-rating-star">⭐</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Your Food Review:</label>
+        <textarea id="t-review-comment-input" class="special-instructions-input" style="height: 100px; width: 100%; border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;" placeholder="How was the flavor, delivery speed, and temperature?"></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="t-submit-review-btn" style="font-weight: 800;">
+        Submit Review
+      </button>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
 

@@ -96,8 +96,6 @@ function initPaymentTabs() {
       } else if (targetId === 'tab-netbanking') {
         const selBank = document.querySelector('.bank-option-card.selected');
         currentActivePaymentMethod = selBank ? `Net Banking (${selBank.dataset.bank})` : 'Net Banking';
-      } else if (targetId === 'tab-cod') {
-        currentActivePaymentMethod = 'Cash on Delivery';
       }
     });
   });
@@ -419,7 +417,7 @@ function initPlaceOrderFlow() {
         const upiHandleEl = document.getElementById('gateway-upi-handle');
         if (upiHandleEl) upiHandleEl.textContent = currentActivePaymentMethod;
       } else {
-        // Net banking or COD -> Instant authorization
+        // Net banking -> Instant authorization
         completeOrderTransaction();
       }
     }, 1200);

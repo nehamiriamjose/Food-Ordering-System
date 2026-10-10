@@ -91,7 +91,7 @@
           🍳 Pickup: <strong>{{ deliv.restaurant_name }}</strong> ({{ deliv.restaurant_address }})
         </div>
         <div style="font-size: 0.88rem; color: var(--text-muted);">
-          Payout: <strong style="color: var(--success);">${{ "%.2f"|format(deliv.delivery_fee + deliv.tip) }}</strong> (incl. ${{ "%.2f"|format(deliv.tip) }} customer tip)
+          Payout: <strong style="color: var(--success);">${{ "%.2f"|format((deliv.delivery_fee or 0) + (deliv.tip or 0)) }}</strong> (incl. ${{ "%.2f"|format(deliv.tip or 0) }} customer tip)
         </div>
       </div>
 
@@ -143,8 +143,8 @@
         <tr>
           <td style="font-weight: 800; color: var(--primary);">#{{ d.order_number }}</td>
           <td>{{ d.restaurant_name }}</td>
-          <td style="font-weight: 800; color: var(--success);">${{ "%.2f"|format(d.delivery_fee + d.tip) }}</td>
-          <td>${{ "%.2f"|format(d.tip) }}</td>
+          <td style="font-weight: 800; color: var(--success);">${{ "%.2f"|format((d.delivery_fee or 0) + (d.tip or 0)) }}</td>
+          <td>${{ "%.2f"|format(d.tip or 0) }}</td>
           <td><span class="tag tag-success">Delivered</span></td>
         </tr>
         {% endfor %}

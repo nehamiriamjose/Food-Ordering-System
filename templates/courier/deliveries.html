@@ -61,7 +61,7 @@
         </div>
 
         <div style="font-size: 1.2rem; font-weight: 800; color: var(--success);">
-          💰 +${{ "%.2f"|format(deliv.delivery_fee + deliv.tip) }}
+          💰 +${{ "%.2f"|format((deliv.delivery_fee or 0) + (deliv.tip or 0)) }}
           <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">(incl. tip)</span>
         </div>
       </div>
@@ -116,59 +116,12 @@
     {% endfor %}
   </div>
   {% else %}
-  <div style="background: #FFF; border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 32px; text-align: center;">
-    <div style="font-size: 2rem; margin-bottom: 8px;">🟢</div>
-    <div style="font-weight: 800; font-size: 1.05rem; color: var(--secondary); margin-bottom: 4px;">You are completely free & available for new deliveries!</div>
-    <div style="color: var(--text-muted); font-size: 0.88rem;">When a restaurant manager allocates an order to you, it will show up right here with instant notification.</div>
-  </div>
-  {% endif %}
-</section>
-
-<!-- Available Open Pool Broadcasts -->
-<section>
-  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-    <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;">
-      Nearby Available Pickup Broadcasts (Open Pool)
-    </h2>
-    <span class="tag tag-secondary" style="font-size: 0.78rem;">
-      📡 Open to Any Driver
-    </span>
-  </div>
-
-  {% if available_orders %}
-  <div style="display: flex; flex-direction: column; gap: 14px;">
-    {% for ord in available_orders %}
-    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: var(--shadow-xs);">
-      <div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-          <span style="font-weight: 800; font-size: 1.05rem; color: var(--secondary);">
-            {{ ord.restaurant_name }}
-          </span>
-          <span class="tag tag-primary" style="font-size: 0.72rem; font-weight: 700;">#{{ ord.order_number }}</span>
-          <span class="tag tag-warning" style="font-size: 0.72rem;">{{ ord.status|capitalize }}</span>
-        </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">
-          📍 {{ ord.restaurant_address }}
-        </div>
-      </div>
-
-      <div style="display: flex; align-items: center; gap: 16px;">
-        <div style="text-align: right;">
-          <div style="font-weight: 800; color: var(--success); font-size: 1.15rem;">
-            +${{ "%.2f"|format(ord.delivery_fee + ord.tip) }}
-          </div>
-          <div style="font-size: 0.72rem; color: var(--text-muted);">Estimated Payout</div>
-        </div>
-        <button class="btn btn-secondary btn-md mission-step-btn" data-order-number="{{ ord.order_number }}" data-next-status="picked_up" style="font-weight: 800;">
-          ⚡ Claim & Pick Up
-        </button>
-      </div>
+  <div style="background: #FFF; border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 36px 20px; text-align: center;">
+    <div style="font-size: 2.2rem; margin-bottom: 8px;">🟢</div>
+    <div style="font-weight: 800; font-size: 1.1rem; color: var(--secondary); margin-bottom: 6px;">You are currently free and ready for delivery dispatches!</div>
+    <div style="color: var(--text-muted); font-size: 0.9rem; max-width: 480px; margin: 0 auto;">
+      Orders are assigned directly by restaurant partners. Once a restaurant assigns an order to you, it will appear here immediately with the pickup and delivery action buttons.
     </div>
-    {% endfor %}
-  </div>
-  {% else %}
-  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
-    No open broadcasts pending courier pickup in the zone right now.
   </div>
   {% endif %}
 </section>

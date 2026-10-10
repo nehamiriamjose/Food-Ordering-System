@@ -25,7 +25,7 @@
       <div class="top-nav-user-area">
         <span class="top-nav-restaurant-name">
           <strong>{{ courier.name if courier else 'Courier Driver' }}</strong>
-          <span class="status-indicator-dot {% if courier and courier.is_online %}online{% else %}offline{% endif %}" title="Courier Shift Status"></span>
+          <span class="status-indicator-dot {% if courier and courier.is_online %}online{% else %}offline{% endif %}" id="courier-top-status-dot" title="Courier Shift Status"></span>
         </span>
         <a href="{{ url_for('index') }}" class="btn btn-outline btn-xs" title="View Customer Food Marketplace">
           👁️ Storefront
@@ -73,13 +73,13 @@
         <a href="{{ url_for('courier_overview') }}" class="sidebar-link {% if request.path == '/courier' %}active{% endif %}">
           <i>🛵</i> Overview & Shift
         </a>
-        <a href="{{ url_for('courier_deliveries') }}" class="sidebar-link {% if request.path == '/courier/deliveries' %}active{% endif %}">
+        <a href="{{ url_for('courier_deliveries') }}" class="sidebar-link {% if request.path.startswith('/courier/deliveries') %}active{% endif %}">
           <i>📦</i> Deliveries Queue
         </a>
         <a href="{{ url_for('courier_earnings') }}" class="sidebar-link {% if request.path == '/courier/earnings' %}active{% endif %}">
           <i>💵</i> Earnings & Payouts
         </a>
-        <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.path == '/profile' %}active{% endif %}">
+        <a href="{{ url_for('courier_profile') }}" class="sidebar-link {% if request.path == '/courier/profile' %}active{% endif %}">
           <i>⚙️</i> Vehicle & Profile
         </a>
       </nav>

@@ -63,11 +63,20 @@
   font-size: 0.92rem;
   color: var(--text-muted);
   transition: var(--transition);
+  text-decoration: none;
+  border-left: 3.5px solid transparent;
 }
 
-.sidebar-link:hover, .sidebar-link.active {
-  background: var(--primary-light);
+.sidebar-link:hover {
+  background: #F3F4F6;
+  color: var(--secondary);
+}
+
+.sidebar-link.active {
+  background: #FFF1EE;
   color: var(--primary);
+  font-weight: 800;
+  border-left-color: var(--primary);
 }
 
 .sidebar-link i {

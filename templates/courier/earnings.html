@@ -76,9 +76,9 @@
         <tr>
           <td style="font-weight: 800;">#{{ d.order_number }}</td>
           <td>{{ d.restaurant_name }}</td>
-          <td>${{ "%.2f"|format(d.delivery_fee) }}</td>
-          <td style="color: var(--success); font-weight: 700;">+${{ "%.2f"|format(d.tip) }}</td>
-          <td style="font-weight: 800; font-size: 1rem;">${{ "%.2f"|format(d.delivery_fee + d.tip) }}</td>
+          <td>${{ "%.2f"|format(d.delivery_fee or 0) }}</td>
+          <td style="color: var(--success); font-weight: 700;">+${{ "%.2f"|format(d.tip or 0) }}</td>
+          <td style="font-weight: 800; font-size: 1rem;">${{ "%.2f"|format((d.delivery_fee or 0) + (d.tip or 0)) }}</td>
           <td><span class="tag tag-success">Paid Out</span></td>
         </tr>
         {% endfor %}

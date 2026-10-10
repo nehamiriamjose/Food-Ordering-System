@@ -1,0 +1,201 @@
+{% extends 'courier/base_courier.html' %}
+
+{% block title %}Vehicle & Courier Profile | CraveCart{% endblock %}
+
+{% block content %}
+<div style="max-width: 920px;">
+  <!-- Header Title -->
+  <div style="margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); margin-bottom: 4px;">
+        Vehicle & Courier Profile 🛵
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.92rem;">
+        Manage your fleet transport mode, vehicle registration plate, driver contact info, and shift credentials.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <a href="{{ url_for('courier_overview') }}" class="btn btn-outline btn-sm">
+        ← Back to Overview
+      </a>
+    </div>
+  </div>
+
+  <!-- Courier Shift & Rating KPI Cards -->
+  <div class="stats-grid" style="margin-bottom: 30px;">
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Transport Mode</span>
+        <span class="stat-value" style="font-size: 1.25rem; color: var(--primary);">
+          {% if courier and courier.vehicle_type == 'Car' %}🚗 Car
+          {% elif courier and courier.vehicle_type == 'Bicycle' %}🚴 Bicycle
+          {% elif courier and courier.vehicle_type == 'Electric Scooter' %}🛴 E-Scooter
+          {% elif courier and courier.vehicle_type == 'Walker / Foot' %}🚶 Walker
+          {% else %}🛵 Motorcycle{% endif %}
+        </span>
+      </div>
+      <div class="stat-icon-wrap" style="background: #FFF3EB; color: #EA580C;">🛵</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Fleet Plate / ID</span>
+        <span class="stat-value" style="font-size: 1.25rem;">{{ courier.vehicle_plate if courier else 'NY-7892' }}</span>
+      </div>
+      <div class="stat-icon-wrap" style="background: #EFF6FF; color: #2563EB;">🏷️</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Driver Rating</span>
+        {% if courier and courier.total_trips and courier.total_trips > 0 and courier.rating %}
+          <span class="stat-value">{{ "%.1f"|format(courier.rating) }} ⭐</span>
+        {% else %}
+          <span class="stat-value" style="font-size: 1.25rem; color: var(--success);">Top Rated ✨</span>
+        {% endif %}
+      </div>
+      <div class="stat-icon-wrap" style="background: #FEF3C7; color: #D97706;">⭐</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-info-left">
+        <span class="stat-label">Lifetime Deliveries</span>
+        <span class="stat-value">{{ courier.total_trips or 0 }}</span>
+      </div>
+      <div class="stat-icon-wrap" style="background: var(--success-light); color: var(--success);">🏆</div>
+    </div>
+  </div>
+
+  <!-- Profile & Vehicle Edit Form -->
+  <div class="data-table-card" style="padding: 28px; margin-bottom: 32px; background: #FFF; border: 1.5px solid var(--border-color);">
+    <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin: 0;">Driver & Vehicle Details</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0;">Updated details appear immediately on restaurant partner order dispatch boards.</p>
+      </div>
+      <span class="tag tag-success" style="font-size: 0.8rem; padding: 4px 10px;">
+        {% if courier and courier.is_online %}🟢 Shift Active (Online){% else %}⚪ Shift Paused (Offline){% endif %}
+      </span>
+    </div>
+
+    <form method="POST" action="{{ url_for('courier_profile') }}" enctype="multipart/form-data">
+      
+      <!-- Avatar & Photo Section -->
+      <div style="background: var(--bg-muted); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 24px;">
+        <label style="display: block; font-weight: 800; font-size: 0.88rem; margin-bottom: 8px; color: var(--secondary);">
+          Driver Avatar & ID Photo
+        </label>
+        
+        <div style="display: flex; gap: 18px; align-items: center; flex-wrap: wrap;">
+          <div style="width: 72px; height: 72px; border-radius: 50%; overflow: hidden; border: 3px solid #FFF; box-shadow: var(--shadow-sm); background: #FFF; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+            <img id="courier-avatar-preview" src="{{ courier.avatar_url if (courier and courier.avatar_url) else 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80' }}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+          
+          <div style="flex: 1; min-width: 240px;">
+            <input type="file" name="avatar_file" accept="image/*" class="form-control" style="padding: 6px; font-size: 0.82rem; margin-bottom: 6px;" onchange="previewCourierAvatar(this)">
+            <input type="hidden" name="avatar_url" id="courier-avatar-url" value="{{ courier.avatar_url if courier else '' }}">
+            <small style="color: var(--text-muted); font-size: 0.76rem; display: block;">Upload PNG, JPG, or WEBP photo from your device</small>
+          </div>
+        </div>
+
+        <!-- Preset Avatar Options -->
+        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+          <span style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">⚡ Or Choose Preset Driver Photo:</span>
+          <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn-xs btn-outline" onclick="selectCourierAvatarPreset('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80')" style="font-size: 0.75rem; padding: 3px 8px;">Driver 1</button>
+            <button type="button" class="btn-xs btn-outline" onclick="selectCourierAvatarPreset('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80')" style="font-size: 0.75rem; padding: 3px 8px;">Driver 2</button>
+            <button type="button" class="btn-xs btn-outline" onclick="selectCourierAvatarPreset('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80')" style="font-size: 0.75rem; padding: 3px 8px;">Driver 3</button>
+            <button type="button" class="btn-xs btn-outline" onclick="selectCourierAvatarPreset('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80')" style="font-size: 0.75rem; padding: 3px 8px;">Driver 4</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle Configuration Section -->
+      <div style="background: #FAF9F6; border: 1.5px solid #E5E7EB; border-radius: var(--radius-md); padding: 18px; margin-bottom: 24px;">
+        <div style="font-weight: 800; font-size: 0.95rem; color: var(--secondary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+          <span>🛵</span> Fleet Transport & Vehicle Specifications
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px;">
+          <div>
+            <label class="form-label" style="font-size: 0.84rem; margin-bottom: 4px;">Primary Vehicle Type</label>
+            <select name="vehicle_type" class="form-control" style="padding: 8px 12px; font-size: 0.9rem;" required>
+              <option value="Motorcycle" {% if courier and courier.vehicle_type == 'Motorcycle' %}selected{% endif %}>🛵 Motorcycle / Scooter (Fast Urban Delivery)</option>
+              <option value="Bicycle" {% if courier and courier.vehicle_type == 'Bicycle' %}selected{% endif %}>🚴 Bicycle / Road Bike (Eco Fleet)</option>
+              <option value="Electric Scooter" {% if courier and courier.vehicle_type == 'Electric Scooter' %}selected{% endif %}>🛴 Electric Scooter / E-Bike</option>
+              <option value="Car" {% if courier and courier.vehicle_type == 'Car' %}selected{% endif %}>🚗 Car / Sedan (Large & Catering Orders)</option>
+              <option value="Walker / Foot" {% if courier and courier.vehicle_type == 'Walker / Foot' %}selected{% endif %}>🚶 Walker / Foot Courier (High-Density Downtown)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" style="font-size: 0.84rem; margin-bottom: 4px;">Vehicle Plate / Fleet Identifier</label>
+            <div class="input-icon-wrap">
+              <span class="input-icon">🏷️</span>
+              <input type="text" name="vehicle_plate" value="{{ courier.vehicle_plate if courier else 'NYC-7892' }}" placeholder="e.g. CC-7892, NY-4821" class="form-control" style="padding: 8px 12px 8px 34px; font-size: 0.9rem;" required>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted);">
+          ℹ️ Your transport mode helps restaurants assign orders with optimal size and delivery distance.
+        </div>
+      </div>
+
+      <!-- Contact & Driver Credentials -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div>
+          <label class="form-label" style="font-size: 0.84rem; margin-bottom: 4px;">Driver Full Name</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" name="name" value="{{ courier.name if courier else (g.user.name if g.user else '') }}" class="form-control" style="padding: 8px 12px 8px 34px; font-size: 0.9rem;" required>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label" style="font-size: 0.84rem; margin-bottom: 4px;">Contact Phone Number</label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">📞</span>
+            <input type="text" name="phone" value="{{ courier.phone if courier else (g.user.phone if g.user else '') }}" class="form-control" style="padding: 8px 12px 8px 34px; font-size: 0.9rem;" required>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit & Save Actions -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 18px; flex-wrap: wrap; gap: 12px;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          🔒 Profile info is secured and visible to active restaurants during pickup dispatch.
+        </span>
+        <div style="display: flex; gap: 10px;">
+          <a href="{{ url_for('courier_overview') }}" class="btn btn-outline btn-md">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-md" style="font-weight: 800; padding: 10px 22px;">
+            💾 Save Vehicle & Profile Settings
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+function previewCourierAvatar(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('courier-avatar-preview').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function selectCourierAvatarPreset(url) {
+  const hidden = document.getElementById('courier-avatar-url');
+  if (hidden) hidden.value = url;
+  const preview = document.getElementById('courier-avatar-preview');
+  if (preview) preview.src = url;
+  if (window.showToast) window.showToast('Driver preset photo selected', 'info');
+}
+</script>
+{% endblock %}

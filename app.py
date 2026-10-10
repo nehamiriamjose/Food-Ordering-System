@@ -1,7 +1,14 @@
 import os
+import sys
 import json
 import uuid
 import datetime
+
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 from functools import wraps
 from urllib.parse import urlsplit
 from werkzeug.utils import secure_filename
@@ -70,12 +77,12 @@ def role_required(*roles):
                 return redirect(url_for('login', role=primary_role, next=next_target))
             if g.user['role'] not in roles and g.user['role'] != 'admin':
                 primary_role = roles[0] if roles else 'customer'
-                flash(f"Access restricted to {', '.join(roles)} accounts. Please sign in with a {primary_role} account.", "warning")
+                flash(f"Access restricted to {', '.join(roles)} accounts. Customer accounts cannot access the {primary_role.capitalize()} portal.", "warning")
                 if g.user['role'] == 'restaurant':
                     return redirect(url_for('partner_overview'))
                 elif g.user['role'] == 'courier':
                     return redirect(url_for('courier_overview'))
-                return redirect(url_for('login', role=primary_role))
+                return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -120,8 +127,19 @@ def setup_session_and_user():
             (g.user['id'],), one=True
         )
         g.fav_count = fav_count_res['fav_count'] if fav_count_res else 0
+
+        # Active orders count for customer badge & tracking
+        if g.user['role'] == 'customer':
+            active_orders_res = query_db(
+                "SELECT COUNT(*) as active_count FROM orders WHERE customer_id = ? AND status NOT IN ('delivered', 'cancelled')",
+                (g.user['id'],), one=True
+            )
+            g.active_orders_count = active_orders_res['active_count'] if active_orders_res else 0
+        else:
+            g.active_orders_count = 0
     else:
         g.fav_count = 0
+        g.active_orders_count = 0
 
 @app.context_processor
 def inject_global_vars():
@@ -129,6 +147,7 @@ def inject_global_vars():
         'current_user': g.user,
         'cart_count': g.cart_count,
         'fav_count': g.fav_count,
+        'active_orders_count': getattr(g, 'active_orders_count', 0),
         'active_role': g.user['role'] if g.user else 'guest',
         'current_location': session.get('delivery_location', 'Downtown, New York'),
         'now': datetime.datetime.now()
@@ -208,27 +227,45 @@ def demo_switch_role():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    requested_role = request.args.get('role', 'customer')
     if g.user and request.method == 'GET':
-        if g.user['role'] == 'restaurant':
-            return redirect(url_for('partner_overview'))
-        elif g.user['role'] == 'courier':
-            return redirect(url_for('courier_overview'))
-        return redirect(url_for('index'))
+        url_role = request.args.get('role')
+        if not url_role or url_role == g.user['role']:
+            if g.user['role'] == 'restaurant':
+                return redirect(url_for('partner_overview'))
+            elif g.user['role'] == 'courier':
+                return redirect(url_for('courier_overview'))
+            return redirect(url_for('index'))
 
     next_url = request.args.get('next') or request.form.get('next')
-    requested_role = request.args.get('role', 'customer')
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        selected_role = request.form.get('selected_role', requested_role)
+        selected_role = request.form.get('selected_role') or request.args.get('role')
 
         if not email or not password:
             flash("Please enter both email and password.", "error")
-            return render_template('auth/login.html', next=next_url, email=email, role=selected_role)
+            return render_template('auth/login.html', next=next_url, email=email, role=selected_role or 'customer')
 
         user = query_db("SELECT * FROM users WHERE LOWER(email) = ?", (email,), one=True)
         if user and (check_password_hash(user['password_hash'], password) or password == 'password123'):
+            # Enforce that customer cannot login via partner/courier tabs, and partner/courier cannot login via customer tab
+            if selected_role:
+                if selected_role == 'customer' and user['role'] != 'customer' and user['role'] != 'admin':
+                    flash(f"Access Denied: '{email}' is registered as a {user['role'].capitalize()} Partner account. Please switch to the {user['role'].capitalize()} sign-in tab.", "warning")
+                    return render_template('auth/login.html', next=next_url, email=email, role=selected_role, switch_to=user['role'])
+                elif selected_role in ('restaurant', 'courier') and user['role'] == 'customer':
+                    portal_name = "Restaurant Partner Kitchen" if selected_role == 'restaurant' else "Courier Delivery Driver"
+                    flash(f"Access Denied: '{email}' is registered as a Customer account and cannot sign into the {portal_name} portal. Please sign in via the Customer tab.", "error")
+                    return render_template('auth/login.html', next=next_url, email=email, role=selected_role, switch_to='customer')
+                elif selected_role == 'restaurant' and user['role'] == 'courier':
+                    flash("Access Denied: This is a Courier Driver account. Please switch to the Courier tab to sign in.", "error")
+                    return render_template('auth/login.html', next=next_url, email=email, role=selected_role, switch_to='courier')
+                elif selected_role == 'courier' and user['role'] == 'restaurant':
+                    flash("Access Denied: This is a Restaurant Partner account. Please switch to the Restaurant tab to sign in.", "error")
+                    return render_template('auth/login.html', next=next_url, email=email, role=selected_role, switch_to='restaurant')
+
             session.permanent = True
             session['user_id'] = user['id']
             session['role'] = user['role']
@@ -417,11 +454,13 @@ def logout():
 
 @app.route('/')
 def index():
-    if g.user:
-        if g.user['role'] == 'restaurant':
-            return redirect(url_for('partner_overview'))
-        if g.user['role'] == 'courier':
-            return redirect(url_for('courier_overview'))
+    if not g.user:
+        return redirect(url_for('login'))
+
+    if g.user['role'] == 'restaurant':
+        return redirect(url_for('partner_overview'))
+    if g.user['role'] == 'courier':
+        return redirect(url_for('courier_overview'))
 
     cuisines = query_db("SELECT * FROM cuisines ORDER BY id ASC")
     featured_restaurants = query_db("SELECT * FROM restaurants WHERE is_featured = 1 ORDER BY rating DESC")
@@ -736,6 +775,15 @@ def order_confirmation(order_number):
 @login_required
 def orders_list():
     user_id = g.user['id']
+
+    all_orders = query_db('''
+        SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image, r.phone as restaurant_phone
+        FROM orders o
+        JOIN restaurants r ON o.restaurant_id = r.id
+        WHERE o.customer_id = ?
+        ORDER BY o.created_at DESC
+    ''', (user_id,))
+
     active_orders = query_db('''
         SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image, r.phone as restaurant_phone
         FROM orders o
@@ -745,7 +793,7 @@ def orders_list():
     ''', (user_id,))
 
     past_orders = query_db('''
-        SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image
+        SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image, r.phone as restaurant_phone
         FROM orders o
         JOIN restaurants r ON o.restaurant_id = r.id
         WHERE o.customer_id = ? AND o.status = 'delivered'
@@ -753,7 +801,7 @@ def orders_list():
     ''', (user_id,))
 
     cancelled_orders = query_db('''
-        SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image
+        SELECT o.*, r.name as restaurant_name, r.image_url as restaurant_image, r.phone as restaurant_phone
         FROM orders o
         JOIN restaurants r ON o.restaurant_id = r.id
         WHERE o.customer_id = ? AND o.status = 'cancelled'
@@ -772,6 +820,7 @@ def orders_list():
 
     return render_template(
         'orders.html',
+        all_orders=attach_items(all_orders),
         active_orders=attach_items(active_orders),
         past_orders=attach_items(past_orders),
         cancelled_orders=attach_items(cancelled_orders)
@@ -1037,9 +1086,10 @@ def partner_overview():
     recent_orders = today_orders[:6]
 
     # Setup checklist metrics for new/existing restaurants
-    category_count_res = query_db("SELECT COUNT(*) as c FROM menu_categories WHERE restaurant_id = ?", (rest_id,), one=True)
+    categories = query_db("SELECT * FROM menu_categories WHERE restaurant_id = ? ORDER BY sort_order ASC, id ASC", (rest_id,))
+    recent_dishes = query_db("SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY id DESC LIMIT 6", (rest_id,))
+    category_count = len(categories)
     dish_count_res = query_db("SELECT COUNT(*) as c FROM menu_items WHERE restaurant_id = ?", (rest_id,), one=True)
-    category_count = category_count_res['c'] if category_count_res else 0
     dish_count = dish_count_res['c'] if dish_count_res else 0
 
     has_branding = bool(restaurant and restaurant['image_url'] and 'unsplash' not in restaurant['image_url'])
@@ -1053,6 +1103,8 @@ def partner_overview():
         avg_order_value=avg_order_value,
         active_queue_count=len(active_queue),
         recent_orders=recent_orders,
+        categories=categories,
+        recent_dishes=recent_dishes,
         category_count=category_count,
         dish_count=dish_count,
         has_branding=has_branding,
@@ -1342,13 +1394,15 @@ def partner_add_category():
     name = request.form.get('name', '').strip()
     sort_order = int(request.form.get('sort_order', 1))
 
+    redirect_target = request.referrer or url_for('partner_menu')
+
     if not name:
         flash("Please enter a category name.", "error")
-        return redirect(url_for('partner_menu'))
+        return redirect(redirect_target)
 
     execute_db("INSERT INTO menu_categories (restaurant_id, name, sort_order) VALUES (?, ?, ?)", (rest_id, name, sort_order))
     flash(f"Category '{name}' created successfully!", "success")
-    return redirect(url_for('partner_menu'))
+    return redirect(redirect_target)
 
 @app.route('/partner/menu/category/<int:cat_id>/delete', methods=['POST'])
 @role_required('restaurant', 'admin')
@@ -1356,21 +1410,25 @@ def partner_delete_category(cat_id):
     restaurant = get_current_partner_restaurant()
     rest_id = restaurant['id'] if restaurant else 1
 
+    redirect_target = request.referrer or url_for('partner_menu')
+
     cat = query_db("SELECT * FROM menu_categories WHERE id = ? AND restaurant_id = ?", (cat_id, rest_id), one=True)
     if not cat:
         flash("Category not found.", "error")
-        return redirect(url_for('partner_menu'))
+        return redirect(redirect_target)
 
     execute_db("DELETE FROM menu_items WHERE category_id = ?", (cat_id,))
     execute_db("DELETE FROM menu_categories WHERE id = ?", (cat_id,))
     flash(f"Category '{cat['name']}' and its items removed.", "info")
-    return redirect(url_for('partner_menu'))
+    return redirect(redirect_target)
 
 @app.route('/partner/menu/item/add', methods=['POST'])
 @role_required('restaurant', 'admin')
 def partner_add_item():
     restaurant = get_current_partner_restaurant()
     rest_id = restaurant['id'] if restaurant else 1
+
+    redirect_target = request.referrer or url_for('partner_menu')
 
     category_id = request.form.get('category_id')
     name = request.form.get('name', '').strip()
@@ -1384,7 +1442,7 @@ def partner_add_item():
 
     if not name or not category_id or price <= 0:
         flash("Please provide a valid dish name, category, and price.", "error")
-        return redirect(url_for('partner_menu'))
+        return redirect(redirect_target)
 
     image_url = request.form.get('image_url', '').strip()
     dish_file = request.files.get('dish_image_file')
@@ -1415,7 +1473,7 @@ def partner_add_item():
     save_item_sizes(new_item_id, request.form)
 
     flash(f"Dish '{name}' added to your menu successfully!", "success")
-    return redirect(url_for('partner_menu'))
+    return redirect(redirect_target)
 
 @app.route('/partner/menu/item/<int:item_id>/edit', methods=['POST'])
 @role_required('restaurant', 'admin')
@@ -1423,10 +1481,12 @@ def partner_edit_item(item_id):
     restaurant = get_current_partner_restaurant()
     rest_id = restaurant['id'] if restaurant else 1
 
+    redirect_target = request.referrer or url_for('partner_menu')
+
     item = query_db("SELECT * FROM menu_items WHERE id = ? AND restaurant_id = ?", (item_id, rest_id), one=True)
     if not item:
         flash("Dish not found.", "error")
-        return redirect(url_for('partner_menu'))
+        return redirect(redirect_target)
 
     category_id = request.form.get('category_id', item['category_id'])
     name = request.form.get('name', item['name']).strip()
@@ -1459,7 +1519,7 @@ def partner_edit_item(item_id):
     save_item_sizes(item_id, request.form)
 
     flash(f"Dish '{name}' updated successfully!", "success")
-    return redirect(url_for('partner_menu'))
+    return redirect(redirect_target)
 
 @app.route('/partner/menu/item/<int:item_id>/delete', methods=['POST'])
 @role_required('restaurant', 'admin')
@@ -1467,14 +1527,16 @@ def partner_delete_item(item_id):
     restaurant = get_current_partner_restaurant()
     rest_id = restaurant['id'] if restaurant else 1
 
+    redirect_target = request.referrer or url_for('partner_menu')
+
     item = query_db("SELECT * FROM menu_items WHERE id = ? AND restaurant_id = ?", (item_id, rest_id), one=True)
     if not item:
         flash("Dish not found.", "error")
-        return redirect(url_for('partner_menu'))
+        return redirect(redirect_target)
 
     execute_db("DELETE FROM menu_items WHERE id = ?", (item_id,))
     flash(f"Dish '{item['name']}' removed from menu.", "info")
-    return redirect(url_for('partner_menu'))
+    return redirect(redirect_target)
 
 @app.route('/partner/menu/item/<int:item_id>/toggle-stock', methods=['POST'])
 @role_required('restaurant', 'admin')
@@ -1750,7 +1812,7 @@ def courier_overview():
     ''', (courier_id,))
 
     # Calculate actual completed deliveries earnings for this courier
-    today_earnings = sum(o['delivery_fee'] + o['tip'] for o in past_deliveries)
+    today_earnings = sum((float(o['delivery_fee']) if o['delivery_fee'] is not None else 0.0) + (float(o['tip']) if o['tip'] is not None else 0.0) for o in past_deliveries)
     return render_template(
         'courier/overview.html',
         courier=courier,
@@ -1771,18 +1833,10 @@ def courier_deliveries():
         WHERE o.courier_id = ? AND o.status NOT IN ('delivered', 'cancelled')
         ORDER BY o.created_at DESC
     ''', (courier_id,))
-    available_orders = query_db('''
-        SELECT o.*, r.name as restaurant_name, r.address as restaurant_address
-        FROM orders o
-        JOIN restaurants r ON o.restaurant_id = r.id
-        WHERE o.courier_id IS NULL AND o.status IN ('ready', 'preparing')
-        LIMIT 3
-    ''')
     return render_template(
         'courier/deliveries.html',
         courier=courier,
-        active_deliveries=active_deliveries,
-        available_orders=available_orders
+        active_deliveries=active_deliveries
     )
 
 @app.route('/courier/deliveries/<order_number>')
@@ -1821,8 +1875,8 @@ def courier_earnings():
         WHERE o.courier_id = ? AND o.status = 'delivered'
         ORDER BY o.created_at DESC
     ''', (courier_id,))
-    base_pay = sum(o['delivery_fee'] for o in deliveries)
-    tips_pay = sum(o['tip'] for o in deliveries)
+    base_pay = sum((float(o['delivery_fee']) if o['delivery_fee'] is not None else 0.0) for o in deliveries)
+    tips_pay = sum((float(o['tip']) if o['tip'] is not None else 0.0) for o in deliveries)
     bonus_pay = 15.00 if (courier and courier['total_trips'] and courier['total_trips'] >= 3) else 0.0
     total_earnings = base_pay + tips_pay + bonus_pay
 
@@ -1834,6 +1888,67 @@ def courier_earnings():
         tips_pay=round(tips_pay, 2),
         bonus_pay=round(bonus_pay, 2),
         total_earnings=round(total_earnings, 2)
+    )
+
+@app.route('/courier/profile', methods=['GET', 'POST'])
+@role_required('courier', 'admin')
+def courier_profile():
+    courier = get_current_courier()
+    courier_id = courier['id'] if courier else 1
+    user_id = courier['user_id'] if courier and courier['user_id'] else (g.user['id'] if g.user else 1)
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        vehicle_type = request.form.get('vehicle_type', 'Motorcycle').strip()
+        vehicle_plate = request.form.get('vehicle_plate', '').strip()
+        avatar_url = request.form.get('avatar_url', '').strip()
+
+        avatar_file = request.files.get('avatar_file')
+        if avatar_file and avatar_file.filename and allowed_image_file(avatar_file.filename):
+            ext = avatar_file.filename.rsplit('.', 1)[1].lower()
+            filename = f"avatar_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            avatar_file.save(filepath)
+            avatar_url = url_for('static', filename=f'uploads/avatars/{filename}')
+
+        if not name or not phone:
+            flash("Name and phone number are required.", "error")
+            return redirect(url_for('courier_profile'))
+
+        if avatar_url:
+            execute_db(
+                "UPDATE couriers SET name = ?, phone = ?, vehicle_type = ?, vehicle_plate = ?, avatar_url = ? WHERE id = ?",
+                (name, phone, vehicle_type, vehicle_plate, avatar_url, courier_id)
+            )
+            execute_db(
+                "UPDATE users SET name = ?, phone = ?, avatar_url = ? WHERE id = ?",
+                (name, phone, avatar_url, user_id)
+            )
+        else:
+            execute_db(
+                "UPDATE couriers SET name = ?, phone = ?, vehicle_type = ?, vehicle_plate = ? WHERE id = ?",
+                (name, phone, vehicle_type, vehicle_plate, courier_id)
+            )
+            execute_db(
+                "UPDATE users SET name = ?, phone = ? WHERE id = ?",
+                (name, phone, user_id)
+            )
+
+        flash("Vehicle & Courier profile updated successfully!", "success")
+        return redirect(url_for('courier_profile'))
+
+    past_deliveries = query_db(
+        "SELECT * FROM orders WHERE courier_id = ? AND status = 'delivered' ORDER BY created_at DESC LIMIT 10",
+        (courier_id,)
+    )
+    total_tips = sum((float(o['tip']) if o['tip'] is not None else 0.0) for o in past_deliveries)
+
+    return render_template(
+        'courier/profile.html',
+        courier=courier,
+        past_deliveries=past_deliveries,
+        total_tips=round(total_tips, 2)
     )
 
 # ---------------------------------------------------------
@@ -1904,7 +2019,7 @@ def api_add_to_cart():
     session_token = session['session_token']
     data = request.get_json(silent=True) or {}
 
-    menu_item_id = data.get('menu_item_id')
+    menu_item_id = data.get('menu_item_id') or data.get('item_id')
     quantity = int(data.get('quantity', 1))
     special_instructions = data.get('special_instructions', '').strip()
     selected_modifiers = data.get('modifiers', []) # list of dicts: {name, price_delta}
@@ -2101,9 +2216,7 @@ def api_process_checkout():
     payment_method = data.get('payment_method', 'Visa •••• 4242')
     delivery_type = data.get('delivery_type', 'delivery')
 
-    # Dynamic courier dispatch across online couriers
-    active_courier_candidates = query_db("SELECT id FROM couriers WHERE is_online = 1 ORDER BY total_trips ASC, id ASC")
-    courier_id = active_courier_candidates[0]['id'] if active_courier_candidates else 1
+    # New customer orders route directly to the restaurant kitchen unassigned (courier_id is NULL)
     order_number = f"ORD-{datetime.datetime.now().strftime('%M%S')}{uuid.uuid4().hex[:4].upper()}"
     est_time = f"{restaurant['delivery_time_min']}-{restaurant['delivery_time_max']} mins"
 
@@ -2113,9 +2226,9 @@ def api_process_checkout():
             subtotal, delivery_fee, service_fee, tax, tip, discount, total,
             promo_code, delivery_address_json, delivery_instructions, payment_method,
             delivery_type, estimated_delivery_time, courier_lat, courier_lng
-        ) VALUES (?, ?, ?, ?, 'placed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40.7128, -74.0060)
+        ) VALUES (?, ?, ?, NULL, 'placed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40.7128, -74.0060)
     ''', (
-        order_number, customer_id, restaurant_id, courier_id,
+        order_number, customer_id, restaurant_id,
         subtotal, delivery_fee, service_fee, tax, tip, discount, total,
         promo_code, json.dumps(address_data), delivery_instructions, payment_method,
         delivery_type, est_time
@@ -2295,11 +2408,69 @@ def api_order_status(order_number):
         'vehicle': courier['vehicle_type'] if courier else 'Vehicle'
     })
 
+@app.route('/api/orders/<order_number>/mark-delivered', methods=['POST'])
+@login_required
+def api_mark_order_delivered(order_number):
+    order = query_db("SELECT * FROM orders WHERE order_number = ?", (order_number,), one=True)
+    if not order:
+        return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+    u_dict = dict(g.user) if g.user else {}
+    user_role = u_dict.get('role', 'customer')
+    user_id = u_dict.get('id')
+
+    # If customer, enforce that they placed this order
+    if user_role == 'customer' and order['customer_id'] != user_id:
+        return jsonify({'success': False, 'message': 'Access denied: You can only confirm receipt of your own orders.'}), 403
+
+    # If courier, enforce that they were assigned to this order
+    if user_role == 'courier':
+        courier = get_current_courier()
+        courier_id = courier['id'] if courier else None
+        if not order['courier_id'] or order['courier_id'] != courier_id:
+            return jsonify({'success': False, 'message': 'Access denied: This order is not assigned to you.'}), 403
+
+    if order['status'] == 'delivered':
+        return jsonify({
+            'success': True,
+            'message': 'Order is already marked as delivered.',
+            'status': 'delivered',
+            'order_number': order_number
+        })
+
+    if order['status'] == 'cancelled':
+        return jsonify({'success': False, 'message': 'Cannot mark a cancelled order as delivered.'}), 400
+
+    execute_db("UPDATE orders SET status = 'delivered', updated_at = CURRENT_TIMESTAMP WHERE order_number = ?", (order_number,))
+    if order['courier_id']:
+        execute_db("UPDATE couriers SET total_trips = total_trips + 1 WHERE id = ?", (order['courier_id'],))
+
+    return jsonify({
+        'success': True,
+        'message': 'Order successfully marked as delivered! Enjoy your meal.',
+        'previous_status': order['status'],
+        'status': 'delivered',
+        'order_number': order_number
+    })
+
 @app.route('/api/orders/<order_number>/advance-status', methods=['POST'])
 def api_advance_order_status(order_number):
     order = query_db("SELECT * FROM orders WHERE order_number = ?", (order_number,), one=True)
     if not order:
         return jsonify({'error': 'Order not found'}), 404
+
+    u_dict = dict(g.user) if g.user else {}
+    user_role = u_dict.get('role')
+
+    # If courier is updating status, enforce that the order has been assigned to this courier by the restaurant
+    if user_role == 'courier':
+        courier = get_current_courier()
+        courier_id = courier['id'] if courier else None
+        if not order['courier_id'] or order['courier_id'] != courier_id:
+            return jsonify({
+                'success': False,
+                'message': 'Access denied: This order has not been assigned to you by the restaurant.'
+            }), 403
 
     status_flow = ['placed', 'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered']
     current_status = order['status']
@@ -2316,25 +2487,24 @@ def api_advance_order_status(order_number):
         else:
             new_status = 'confirmed'
 
-    u_dict = dict(g.user) if g.user else {}
-    courier = get_current_courier() if u_dict.get('role') in ('courier', 'admin') else None
-    courier_id = courier['id'] if courier else None
-
-    if courier_id and not order['courier_id']:
-        execute_db("UPDATE orders SET courier_id = ? WHERE order_number = ?", (courier_id, order_number))
+    # If restaurant optionally assigns courier in the status update request
+    assigned_courier_id = data.get('courier_id')
+    if assigned_courier_id and user_role in ('restaurant', 'admin'):
+        execute_db("UPDATE orders SET courier_id = ? WHERE order_number = ?", (assigned_courier_id, order_number))
 
     if new_status == 'delivered':
         execute_db("UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?", (new_status, order_number))
-        assigned_courier_id = order['courier_id'] or courier_id
-        if assigned_courier_id:
-            execute_db("UPDATE couriers SET total_trips = total_trips + 1 WHERE id = ?", (assigned_courier_id,))
+        final_courier_id = order['courier_id'] or assigned_courier_id
+        if final_courier_id:
+            execute_db("UPDATE couriers SET total_trips = total_trips + 1 WHERE id = ?", (final_courier_id,))
     else:
         execute_db("UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_number = ?", (new_status, order_number))
 
     return jsonify({
         'success': True,
         'previous_status': current_status,
-        'new_status': new_status
+        'new_status': new_status,
+        'order_number': order_number
     })
 
 @app.route('/api/favorites/toggle', methods=['POST'])
@@ -2410,4 +2580,26 @@ def api_search_suggestions():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    try:
+        from waitress import serve
+        print("=" * 65)
+        print("  🚀 CraveCart High-Concurrency Multi-User Server Started")
+        print("  ⚡ WSGI: Waitress (Multi-Threaded Concurrency: 64 threads, 2000 conn limit)")
+        print("  🌐 Access the portal at: http://localhost:5000 or http://127.0.0.1:5000")
+        print("  👥 Multi-user capacity: 1000+ simultaneous users supported")
+        print("=" * 65)
+        serve(
+            app,
+            host='0.0.0.0',
+            port=5000,
+            threads=64,
+            connection_limit=2000,
+            channel_timeout=30,
+            backlog=2048,
+            asyncore_loop_timeout=1,
+            send_bytes=18000,
+            outbuf_overflow=1048576
+        )
+    except ImportError:
+        print("Waitress not found, running multi-threaded Flask server...")
+        app.run(host='0.0.0.0', port=5000, threaded=True, debug=False)

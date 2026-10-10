@@ -15,7 +15,10 @@
 </head>
 <body>
 
+  {% set is_auth_page = request.endpoint in ('login', 'signup', 'forgot_password') or request.path in ('/login', '/signup', '/forgot-password') %}
+
   <!-- Top Announcement Flash Deal Marquee Ticker -->
+  {% if not is_auth_page %}
   <div class="top-announcement-ticker" id="top-flash-ticker">
     <div class="ticker-wrap">
       <div class="ticker-move">
@@ -46,14 +49,15 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Main Sticky Header -->
-  <header class="site-header">
+  <header class="site-header {% if is_auth_page %}site-header-auth{% endif %}">
     <div class="container header-inner">
       
       <!-- Left: Brand Logo & Delivery Location -->
       <div class="header-left-group">
-        <a href="{{ url_for('index') }}" class="brand-logo" id="header-logo-link">
+        <a href="{{ url_for('login') if not current_user else url_for('index') }}" class="brand-logo" id="header-logo-link">
           <div class="logo-icon-wrap">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
@@ -69,6 +73,7 @@
           </div>
         </a>
 
+        {% if not is_auth_page %}
         <!-- Enhanced 2-Line Location Selector -->
         <button class="location-btn" id="location-selector-btn" onclick="openLocationModal()" title="Change delivery location" type="button">
           <span class="loc-pin-icon">📍</span>
@@ -78,8 +83,10 @@
           </div>
           <span class="loc-chevron">▾</span>
         </button>
+        {% endif %}
       </div>
 
+      {% if not is_auth_page %}
       <!-- Center: Expanded Global Search Bar -->
       <div class="header-search-wrap">
         <form action="{{ url_for('search') }}" method="GET" class="search-input-box" id="global-search-form">
@@ -146,6 +153,17 @@
           <span>💬</span>
           <span class="nav-text">Help</span>
         </a>
+
+        <!-- Orders Link (Customers only) -->
+        {% if current_user and current_user.role == 'customer' %}
+        <a href="{{ url_for('orders_list') }}" class="nav-link nav-orders-link {% if request.path == '/orders' %}active{% endif %}" title="Order History & Live Status">
+          <span>📦</span>
+          <span class="nav-text">Orders</span>
+          {% if active_orders_count and active_orders_count > 0 %}
+          <span class="badge-count" style="background: var(--primary); color: #fff; font-size: 0.72rem; padding: 2px 6px; border-radius: 99px; margin-left: 4px;">{{ active_orders_count }}</span>
+          {% endif %}
+        </a>
+        {% endif %}
 
         <!-- Favorites Icon (Customers only) -->
         {% if current_user and current_user.role == 'customer' %}
@@ -269,8 +287,26 @@
         </div>
         {% endif %}
       </nav>
+      {% else %}
+      <!-- Minimal Header Actions for Auth Pages -->
+      <nav class="header-nav">
+        <div class="guest-auth-actions">
+          {% if request.endpoint == 'login' or request.path == '/login' %}
+          <a href="{{ url_for('signup') }}" class="btn-primary-auth">
+            <span>Sign Up</span>
+            <span class="auth-btn-arrow">→</span>
+          </a>
+          {% elif request.endpoint == 'signup' or request.path == '/signup' %}
+          <a href="{{ url_for('login') }}" class="btn-ghost-auth">Sign In</a>
+          {% else %}
+          <a href="{{ url_for('login') }}" class="btn-ghost-auth">Sign In</a>
+          {% endif %}
+        </div>
+      </nav>
+      {% endif %}
     </div>
 
+    {% if not is_auth_page %}
     <!-- Secondary Category / Fast Explore Sub-Bar (Food Marketplace Experience) -->
     <div class="header-explore-strip">
       <div class="container explore-strip-inner">
@@ -285,38 +321,45 @@
         <!-- Scrollable Fast Category Chips -->
         <div class="explore-chips-scroll">
           <a href="{{ url_for('offers') }}" class="explore-chip chip-highlight">
-            <span>🔥</span> 50% Off Deals
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&auto=format&fit=crop&q=80" alt="Deals" class="chip-avatar-img"></span>
+            <span>50% Off Deals</span>
           </a>
           <a href="{{ url_for('restaurants_list', cuisine='Pizza') }}" class="explore-chip">
-            <span>🍕</span> Pizza
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=80&auto=format&fit=crop&q=80" alt="Pizza" class="chip-avatar-img"></span>
+            <span>Pizza</span>
           </a>
           <a href="{{ url_for('restaurants_list', cuisine='Burgers') }}" class="explore-chip">
-            <span>🍔</span> Burgers
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=80&auto=format&fit=crop&q=80" alt="Burgers" class="chip-avatar-img"></span>
+            <span>Burgers</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Sushi') }}" class="explore-chip">
-            <span>🍣</span> Sushi
+          <a href="{{ url_for('restaurants_list', cuisine='Sushi & Japanese') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=80&auto=format&fit=crop&q=80" alt="Sushi" class="chip-avatar-img"></span>
+            <span>Sushi</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Healthy') }}" class="explore-chip">
-            <span>🥗</span> Healthy & Bowls
+          <a href="{{ url_for('restaurants_list', cuisine='Healthy & Bowls') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=80&auto=format&fit=crop&q=80" alt="Healthy" class="chip-avatar-img"></span>
+            <span>Healthy Bowls</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Asian') }}" class="explore-chip">
-            <span>🍜</span> Asian & Ramen
+          <a href="{{ url_for('restaurants_list', cuisine='Asian & Noodles') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=80&auto=format&fit=crop&q=80" alt="Asian" class="chip-avatar-img"></span>
+            <span>Asian & Noodles</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Mexican') }}" class="explore-chip">
-            <span>🌮</span> Mexican & Tacos
+          <a href="{{ url_for('restaurants_list', cuisine='Mexican & Tacos') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=80&auto=format&fit=crop&q=80" alt="Mexican" class="chip-avatar-img"></span>
+            <span>Mexican</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Desserts') }}" class="explore-chip">
-            <span>🍰</span> Desserts
+          <a href="{{ url_for('restaurants_list', cuisine='Desserts & Bakery') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=80&auto=format&fit=crop&q=80" alt="Desserts" class="chip-avatar-img"></span>
+            <span>Desserts</span>
           </a>
-          <a href="{{ url_for('restaurants_list', cuisine='Beverages') }}" class="explore-chip">
-            <span>🥤</span> Drinks & Boba
-          </a>
-          <a href="{{ url_for('restaurants_list', sort='rating') }}" class="explore-chip">
-            <span>⭐</span> Top Rated (4.8+)
+          <a href="{{ url_for('restaurants_list', cuisine='Drinks & Beverages') }}" class="explore-chip">
+            <span class="chip-photo-avatar"><img src="https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=80&auto=format&fit=crop&q=80" alt="Drinks" class="chip-avatar-img"></span>
+            <span>Drinks</span>
           </a>
         </div>
       </div>
     </div>
+    {% endif %}
   </header>
 
   <!-- Interactive Delivery Location Modal -->
@@ -385,7 +428,8 @@
     </div>
   </div>
 
-  <!-- Flash Notifications -->
+  <!-- Flash Notifications (for standard pages) -->
+  {% if request.endpoint not in ('login', 'signup', 'forgot_password') %}
   <div class="container flash-messages">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -398,6 +442,7 @@
       {% endif %}
     {% endwith %}
   </div>
+  {% endif %}
 
   <!-- Main Content Body -->
   <main class="main-content">
@@ -535,6 +580,7 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container"></div>
 
+  {% if not is_auth_page %}
   <!-- Mobile Responsive Bottom Navigation Bar -->
   <nav class="mobile-bottom-nav">
     <div class="mobile-nav-items">
@@ -565,6 +611,7 @@
       </a>
     </div>
   </nav>
+  {% endif %}
 
   <!-- Global Footer -->
   <footer class="site-footer">

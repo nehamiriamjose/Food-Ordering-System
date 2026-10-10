@@ -119,6 +119,11 @@
 
         <!-- Actions Row -->
         <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          {% if o.status != 'delivered' and o.status != 'cancelled' %}
+          <button type="button" class="btn btn-primary btn-sm mark-received-profile-btn" data-order="{{ o.order_number }}" data-rest="{{ o.restaurant_name }}" style="font-weight: 800;">
+            ✓ Confirm Received
+          </button>
+          {% endif %}
           <button type="button" class="btn btn-outline btn-sm reorder-btn" data-order="{{ o.order_number }}">
             ⚡ Re-Order Items
           </button>
@@ -409,6 +414,46 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         btn.disabled = false;
         btn.textContent = '⚡ Re-Order Items';
+      }
+    });
+  });
+
+  // Confirm Received in Profile
+  document.querySelectorAll('.mark-received-profile-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ordNum = btn.dataset.order;
+      const restName = btn.dataset.rest;
+      const confirmed = await window.showConfirmDialog({
+        title: 'Confirm Order Delivery',
+        message: `Have you received your order from ${restName}? Marking as delivered will save it in your permanent delivery history.`,
+        confirmText: 'Yes, I Received It',
+        cancelText: 'Not Yet',
+        type: 'primary',
+        icon: '🛵'
+      });
+      if (!confirmed) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/mark-delivered`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('🎉 Order confirmed delivered!', 'success');
+          setTimeout(() => window.location.reload(), 500);
+        } else {
+          window.showToast(data.message || 'Could not update status', 'error');
+          btn.disabled = false;
+          btn.textContent = '✓ Confirm Received';
+        }
+      } catch (err) {
+        window.showToast('Network error', 'error');
+        btn.disabled = false;
+        btn.textContent = '✓ Confirm Received';
       }
     });
   });

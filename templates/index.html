@@ -72,7 +72,9 @@
     <div class="category-carousel">
       {% for c in cuisines %}
       <a href="{{ url_for('restaurants_list', cuisine=c.name) }}" class="category-card">
-        <div class="category-icon-box">{{ c.icon }}</div>
+        <div class="category-photo-box">
+          <img src="{{ c.image_url }}" alt="{{ c.name }}" class="category-photo-img" loading="lazy">
+        </div>
         <span class="category-name">{{ c.name }}</span>
       </a>
       {% endfor %}
@@ -118,10 +120,12 @@
 
           <div class="card-meta-row">
             <div class="meta-item">
-              <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>{{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</span>
             </div>
             <div class="meta-item">
-              <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }} delivery
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+              <span>${{ "%.2f"|format(rest.delivery_fee) }} delivery</span>
             </div>
             <div class="meta-item" style="margin-left: auto;">
               <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">Order Now</a>
@@ -323,10 +327,12 @@
 
           <div class="card-meta-row">
             <div class="meta-item">
-              <span>⏱️</span> {{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>{{ rest.delivery_time_min }}–{{ rest.delivery_time_max }} min</span>
             </div>
             <div class="meta-item">
-              <span>🚴</span> ${{ "%.2f"|format(rest.delivery_fee) }}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px; color: var(--text-muted);"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+              <span>${{ "%.2f"|format(rest.delivery_fee) }}</span>
             </div>
             <div class="meta-item" style="margin-left: auto;">
               <a href="{{ url_for('restaurant_detail', restaurant_id=rest.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 12px;">Order</a>

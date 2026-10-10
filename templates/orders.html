@@ -1,39 +1,230 @@
 {% extends 'base.html' %}
 
-{% block title %}Your Orders | CraveCart{% endblock %}
+{% block title %}Order History & Receipts | CraveCart{% endblock %}
 
 {% block content %}
-<div class="container" style="padding-top: 32px; max-width: 960px;">
-  <h1 style="font-size: 2rem; font-weight: 800; color: var(--secondary); margin-bottom: 24px;">
-    Order History
-  </h1>
+<div class="container" style="padding-top: 32px; padding-bottom: 60px; max-width: 1000px;">
+  
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <h1 style="font-size: 2.1rem; font-weight: 800; color: var(--secondary); margin: 0;">
+          Order History
+        </h1>
+        <span class="tag tag-primary" style="font-size: 0.85rem; font-weight: 700;">
+          {{ all_orders|length if all_orders is defined else ((active_orders|length) + (past_orders|length) + (cancelled_orders|length)) }} Total Orders
+        </span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
+        Track active food deliveries, view past receipts, and confirm order arrivals.
+      </p>
+    </div>
 
-  <!-- Active Orders -->
-  {% if active_orders %}
-  <section style="margin-bottom: 40px;">
-    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-      <span>🛵</span> Active Deliveries ({{ active_orders|length }})
-    </h2>
+    <a href="{{ url_for('restaurants_list') }}" class="btn btn-outline btn-sm">
+      🍽️ Browse Restaurants
+    </a>
+  </div>
 
-    <div style="display: flex; flex-direction: column; gap: 16px;">
+  <!-- Filter & Segment Tabs -->
+  <div class="orders-filter-tabs" style="display: flex; gap: 10px; border-bottom: 2px solid var(--border-color); margin-bottom: 28px; overflow-x: auto; padding-bottom: 2px;">
+    <button type="button" class="btn btn-ghost order-tab-btn active" data-filter="all" style="border-radius: 0; border-bottom: 3px solid var(--primary); font-weight: 800; padding: 10px 16px; margin-bottom: -2px;">
+      All Orders ({{ all_orders|length if all_orders is defined else ((active_orders|length) + (past_orders|length) + (cancelled_orders|length)) }})
+    </button>
+    <button type="button" class="btn btn-ghost order-tab-btn" data-filter="active" style="border-radius: 0; border-bottom: 3px solid transparent; font-weight: 700; padding: 10px 16px; margin-bottom: -2px; color: var(--text-muted);">
+      🛵 Active Deliveries ({{ active_orders|length }})
+    </button>
+    <button type="button" class="btn btn-ghost order-tab-btn" data-filter="delivered" style="border-radius: 0; border-bottom: 3px solid transparent; font-weight: 700; padding: 10px 16px; margin-bottom: -2px; color: var(--text-muted);">
+      ✓ Delivered ({{ past_orders|length }})
+    </button>
+    {% if cancelled_orders %}
+    <button type="button" class="btn btn-ghost order-tab-btn" data-filter="cancelled" style="border-radius: 0; border-bottom: 3px solid transparent; font-weight: 700; padding: 10px 16px; margin-bottom: -2px; color: var(--text-muted);">
+      ✕ Cancelled ({{ cancelled_orders|length }})
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- SECTION 1: ACTIVE DELIVERIES -->
+  <section class="orders-section-group" id="section-active-orders" style="margin-bottom: 40px; {% if not active_orders %}display: none;{% endif %}">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>🛵</span> Active Deliveries In-Progress
+        <span class="badge-count" style="background: var(--primary); color: #fff; font-size: 0.78rem; padding: 2px 8px; border-radius: 99px;">{{ active_orders|length }}</span>
+      </h2>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">Live updates enabled</span>
+    </div>
+
+    <div class="orders-cards-list" id="active-orders-container" style="display: flex; flex-direction: column; gap: 20px;">
       {% for o in active_orders %}
-      <div style="background: #FFF; border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover;">
-          <div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-              <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">{{ o.restaurant_name }}</h3>
-              <span class="tag tag-primary">{{ o.status|replace('_', ' ')|capitalize }}</span>
+      <div class="order-card active-order-card" id="card-order-{{ o.order_number }}" data-order-number="{{ o.order_number }}" style="background: #FFF; border: 1.5px solid var(--primary); border-radius: var(--radius-lg); padding: 22px; box-shadow: 0 4px 16px rgba(244, 81, 58, 0.08); transition: transform 0.2s ease;">
+        
+        <!-- Header Row -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 56px; height: 56px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-color);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+                <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--secondary); margin: 0;">{{ o.restaurant_name }}</h3>
+                <span class="tag tag-primary" style="animation: pulse-badge 2s infinite; font-weight: 700;">
+                  ● {{ o.status|replace('_', ' ')|capitalize }}
+                </span>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                Order <strong>#{{ o.order_number }}</strong> • Placed on {{ o.created_at[:16] }}
+              </div>
             </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);">
-              Order #{{ o.order_number }} • ${{ "%.2f"|format(o.total) }} • ETA: <strong>{{ o.estimated_delivery_time }}</strong>
-            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 1.3rem; font-weight: 800; color: var(--secondary);">${{ "%.2f"|format(o.total) }}</div>
+            <div style="font-size: 0.82rem; color: var(--primary); font-weight: 700;">ETA: {{ o.estimated_delivery_time }}</div>
           </div>
         </div>
 
-        <div>
-          <a href="{{ url_for('order_tracking', order_number=o.order_number) }}" class="btn btn-primary btn-sm" style="padding: 10px 20px;">
-            🚀 Track Live Status
+        <!-- Live Step Indicator -->
+        <div style="background: var(--bg-muted); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px;">
+            <span style="color: {% if o.status in ['placed', 'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way'] %}var(--primary){% endif %};">1. Placed</span>
+            <span style="color: {% if o.status in ['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way'] %}var(--primary){% endif %};">2. Kitchen Prep</span>
+            <span style="color: {% if o.status in ['ready', 'picked_up', 'on_the_way'] %}var(--primary){% endif %};">3. Courier Pickup</span>
+            <span style="color: {% if o.status in ['on_the_way'] %}var(--primary){% endif %};">4. On The Way</span>
+            <span style="color: var(--text-muted);">5. Delivered</span>
+          </div>
+          <div style="height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
+            <div style="height: 100%; background: var(--primary); border-radius: 99px; width: {% if o.status == 'placed' %}20%{% elif o.status == 'confirmed' %}40%{% elif o.status == 'preparing' %}60%{% elif o.status == 'ready' %}75%{% elif o.status == 'picked_up' %}85%{% elif o.status == 'on_the_way' %}92%{% else %}100%{% endif %}; transition: width 0.5s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Items Summary List -->
+        <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 18px; padding: 12px 14px; background: #FAFAFA; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="font-weight: 700; color: var(--secondary); font-size: 0.82rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Items in this order:</div>
+          {% for item in o.order_items %}
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span><strong>{{ item.quantity }}x</strong> {{ item.name }} {% if item.modifiers_summary and item.modifiers_summary != 'Standard' %}<small style="color: var(--text-muted);">({{ item.modifiers_summary }})</small>{% endif %}</span>
+            <span style="font-weight: 700; color: var(--secondary);">${{ "%.2f"|format(item.total_price) }}</span>
+          </div>
+          {% endfor %}
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
+            Paid with: <strong>{{ o.payment_method }}</strong>
+          </div>
+        </div>
+
+        <!-- Actions Row -->
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+          <a href="{{ url_for('order_confirmation', order_number=o.order_number) }}" class="btn btn-ghost btn-sm">
+            🧾 View Receipt
+          </a>
+          <a href="{{ url_for('order_tracking', order_number=o.order_number) }}" class="btn btn-secondary btn-sm" style="font-weight: 700;">
+            🚀 Track Live Map
+          </a>
+          <button type="button" class="btn btn-primary btn-sm mark-delivered-btn" data-order="{{ o.order_number }}" data-rest="{{ o.restaurant_name }}" style="padding: 9px 18px; font-weight: 800;">
+            ✓ I Have Received My Order
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- SECTION 2: DELIVERED / PAST ORDERS (HISTORY) -->
+  <section class="orders-section-group" id="section-delivered-orders" style="margin-bottom: 40px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span>✓</span> Delivered Orders History
+        <span class="badge-count" style="background: var(--success); color: #fff; font-size: 0.78rem; padding: 2px 8px; border-radius: 99px;">{{ past_orders|length }}</span>
+      </h2>
+    </div>
+
+    {% if past_orders %}
+    <div class="orders-cards-list" id="delivered-orders-container" style="display: flex; flex-direction: column; gap: 18px;">
+      {% for o in past_orders %}
+      <div class="order-card delivered-order-card" id="card-order-{{ o.order_number }}" data-order-number="{{ o.order_number }}" style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-xs); transition: box-shadow 0.2s ease;">
+        
+        <!-- Header Row -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 52px; height: 52px; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--border-color);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary); margin: 0;">{{ o.restaurant_name }}</h3>
+                <span class="tag tag-success" style="font-weight: 700;">✓ Order Delivered</span>
+              </div>
+              <div style="font-size: 0.83rem; color: var(--text-muted);">
+                Order <strong>#{{ o.order_number }}</strong> • Placed on {{ o.created_at[:16] }}
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div style="font-size: 1.25rem; font-weight: 800; color: var(--secondary);">${{ "%.2f"|format(o.total) }}</div>
+            <div style="font-size: 0.8rem; color: var(--success); font-weight: 700;">Completed & Saved</div>
+          </div>
+        </div>
+
+        <!-- Items Summary List -->
+        <div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; padding: 12px 14px; background: var(--bg-muted); border-radius: var(--radius-md);">
+          {% for item in o.order_items %}
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span><strong>{{ item.quantity }}x</strong> {{ item.name }} {% if item.modifiers_summary and item.modifiers_summary != 'Standard' %}<small>({{ item.modifiers_summary }})</small>{% endif %}</span>
+            <span style="font-weight: 700; color: var(--secondary);">${{ "%.2f"|format(item.total_price) }}</span>
+          </div>
+          {% endfor %}
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
+            Paid with: <strong>{{ o.payment_method }}</strong>
+          </div>
+        </div>
+
+        <!-- Actions Row -->
+        <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+          <a href="{{ url_for('order_confirmation', order_number=o.order_number) }}" class="btn btn-ghost btn-sm">
+            🧾 View Receipt
+          </a>
+          <a href="{{ url_for('order_tracking', order_number=o.order_number) }}" class="btn btn-outline btn-sm">
+            📍 Tracking Summary
+          </a>
+          <button type="button" class="btn btn-secondary btn-sm reorder-btn" data-order="{{ o.order_number }}">
+            ⚡ Re-Order Items
+          </button>
+          <button type="button" class="btn btn-primary btn-sm open-review-btn" data-order="{{ o.order_number }}" data-rest="{{ o.restaurant_name }}">
+            ⭐ Rate & Review
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 36px; text-align: center; color: var(--text-muted);">
+      <div style="font-size: 2.5rem; margin-bottom: 8px;">🍽️</div>
+      <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 4px; color: var(--secondary);">No delivered orders yet</h3>
+      <p style="font-size: 0.9rem; margin: 0;">Once your food is delivered and received, it will remain archived in your order history right here!</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- SECTION 3: CANCELLED ORDERS (IF ANY) -->
+  {% if cancelled_orders %}
+  <section class="orders-section-group" id="section-cancelled-orders" style="margin-bottom: 40px;">
+    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+      <span>✕</span> Cancelled Orders
+      <span class="badge-count" style="background: var(--danger); color: #fff; font-size: 0.78rem; padding: 2px 8px; border-radius: 99px;">{{ cancelled_orders|length }}</span>
+    </h2>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      {% for o in cancelled_orders %}
+      <div class="order-card cancelled-order-card" id="card-order-{{ o.order_number }}" style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; opacity: 0.85;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 48px; height: 48px; border-radius: var(--radius-md); object-fit: cover;">
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 800; margin: 0; color: var(--secondary);">{{ o.restaurant_name }}</h3>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">Order #{{ o.order_number }} • {{ o.created_at[:16] }}</div>
+            </div>
+          </div>
+          <span class="tag tag-danger">Cancelled</span>
+        </div>
+        <div style="display: flex; justify-content: flex-end;">
+          <a href="{{ url_for('restaurant_detail', restaurant_id=o.restaurant_id) }}" class="btn btn-secondary btn-sm">
+            🔄 Order from Restaurant
           </a>
         </div>
       </div>
@@ -42,50 +233,238 @@
   </section>
   {% endif %}
 
-  <!-- Past Orders -->
-  <section style="margin-bottom: 40px;">
-    <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); margin-bottom: 16px;">
-      Past Orders
+  <!-- ZERO ORDERS OVERALL EMPTY STATE -->
+  {% if not active_orders and not past_orders and not cancelled_orders %}
+  <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 56px 24px; text-align: center; box-shadow: var(--shadow-sm); margin-top: 20px;">
+    <div style="font-size: 3.5rem; margin-bottom: 16px;">🛵</div>
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--secondary); margin-bottom: 8px;">
+      No orders placed yet
     </h2>
+    <p style="color: var(--text-muted); font-size: 1rem; max-width: 480px; margin: 0 auto 24px auto; line-height: 1.5;">
+      Hungry for something delicious? Browse our top-rated gourmet restaurants, artisan kitchens, and bakeries!
+    </p>
+    <a href="{{ url_for('restaurants_list') }}" class="btn btn-primary btn-lg" style="padding: 14px 32px; font-weight: 800;">
+      🍽️ Browse Restaurants
+    </a>
+  </div>
+  {% endif %}
 
-    {% if past_orders %}
-    <div style="display: flex; flex-direction: column; gap: 16px;">
-      {% for o in past_orders %}
-      <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-xs); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <img src="{{ o.restaurant_image }}" alt="{{ o.restaurant_name }}" style="width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover;">
-          <div>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-              <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--secondary);">{{ o.restaurant_name }}</h3>
-              <span class="tag tag-success">✓ Delivered</span>
-            </div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">
-              Placed on {{ o.created_at }} • ${{ "%.2f"|format(o.total) }}
-            </div>
-            <div style="font-size: 0.8rem; color: var(--text-muted);">
-              {% for it in o.order_items %}
-                {{ it.quantity }}x {{ it.name }}{% if not loop.last %}, {% endif %}
-              {% endfor %}
-            </div>
-          </div>
-        </div>
+  <!-- REVIEW MODAL -->
+  <div class="deals-drawer-backdrop" id="review-modal">
+    <div class="deals-drawer-container" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--secondary); margin: 0;" id="review-rest-title">Rate Order</h3>
+        <button type="button" class="modal-close-btn" id="close-review-modal-btn">✕</button>
+      </div>
 
-        <div style="display: flex; gap: 10px;">
-          <a href="{{ url_for('order_confirmation', order_number=o.order_number) }}" class="btn btn-outline btn-sm">
-            View Receipt
-          </a>
-          <a href="{{ url_for('restaurant_detail', restaurant_id=o.restaurant_id) }}" class="btn btn-secondary btn-sm">
-            🔄 Reorder
-          </a>
+      <input type="hidden" id="review-order-number">
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 10px;">Select Star Rating</label>
+        <div style="font-size: 2.2rem; display: flex; justify-content: center; gap: 8px; cursor: pointer;" id="star-rating-row">
+          <span data-star="1" class="star-rating-star">⭐</span>
+          <span data-star="2" class="star-rating-star">⭐</span>
+          <span data-star="3" class="star-rating-star">⭐</span>
+          <span data-star="4" class="star-rating-star">⭐</span>
+          <span data-star="5" class="star-rating-star">⭐</span>
         </div>
       </div>
-      {% endfor %}
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px;">Share your food review & feedback:</label>
+        <textarea id="review-comment-input" class="special-instructions-input" style="height: 100px; width: 100%; border: 1.5px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;" placeholder="How was the food taste, packaging, and delivery experience?"></textarea>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="submit-review-btn" style="font-weight: 800;">
+        Submit Review
+      </button>
     </div>
-    {% else %}
-    <div style="background: #FFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 30px; text-align: center; color: var(--text-muted);">
-      No past orders found.
-    </div>
-    {% endif %}
-  </section>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Tab filtering logic
+  const tabBtns = document.querySelectorAll('.order-tab-btn');
+  const secActive = document.getElementById('section-active-orders');
+  const secDelivered = document.getElementById('section-delivered-orders');
+  const secCancelled = document.getElementById('section-cancelled-orders');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => {
+        b.classList.remove('active');
+        b.style.borderBottomColor = 'transparent';
+        b.style.color = 'var(--text-muted)';
+        b.style.fontWeight = '700';
+      });
+      btn.classList.add('active');
+      btn.style.borderBottomColor = 'var(--primary)';
+      btn.style.color = 'var(--secondary)';
+      btn.style.fontWeight = '800';
+
+      const filter = btn.dataset.filter;
+      if (filter === 'all') {
+        if (secActive) secActive.style.display = 'block';
+        if (secDelivered) secDelivered.style.display = 'block';
+        if (secCancelled) secCancelled.style.display = 'block';
+      } else if (filter === 'active') {
+        if (secActive) secActive.style.display = 'block';
+        if (secDelivered) secDelivered.style.display = 'none';
+        if (secCancelled) secCancelled.style.display = 'none';
+      } else if (filter === 'delivered') {
+        if (secActive) secActive.style.display = 'none';
+        if (secDelivered) secDelivered.style.display = 'block';
+        if (secCancelled) secCancelled.style.display = 'none';
+      } else if (filter === 'cancelled') {
+        if (secActive) secActive.style.display = 'none';
+        if (secDelivered) secDelivered.style.display = 'none';
+        if (secCancelled) secCancelled.style.display = 'block';
+      }
+    });
+  });
+
+  // Mark Delivered Handler
+  document.querySelectorAll('.mark-delivered-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ordNum = btn.dataset.order;
+      const restName = btn.dataset.rest;
+
+      const confirmed = await window.showConfirmDialog({
+        title: 'Confirm Order Delivery',
+        message: `Have you received your order from ${restName}? Marking as delivered will record this order in your permanent delivery history.`,
+        confirmText: 'Yes, I Received My Order',
+        cancelText: 'Not Yet',
+        type: 'primary',
+        icon: '🛵'
+      });
+
+      if (!confirmed) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/mark-delivered`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('🎉 Order confirmed delivered! Saved in your history.', 'success');
+          setTimeout(() => {
+            window.location.reload();
+          }, 600);
+        } else {
+          window.showToast(data.message || 'Could not update status', 'error');
+          btn.disabled = false;
+          btn.textContent = '✓ I Have Received My Order';
+        }
+      } catch (err) {
+        window.showToast('Network error while marking order delivered', 'error');
+        btn.disabled = false;
+        btn.textContent = '✓ I Have Received My Order';
+      }
+    });
+  });
+
+  // Re-Order 1-Click
+  document.querySelectorAll('.reorder-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ordNum = btn.dataset.order;
+      btn.disabled = true;
+      btn.textContent = 'Adding to cart...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/reorder`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('Order items copied to cart!', 'success');
+          setTimeout(() => window.location.href = data.redirect_url, 400);
+        } else {
+          window.showToast(data.message || 'Could not reorder items', 'error');
+          btn.disabled = false;
+          btn.textContent = '⚡ Re-Order Items';
+        }
+      } catch (err) {
+        window.showToast('Could not reorder', 'error');
+        btn.disabled = false;
+        btn.textContent = '⚡ Re-Order Items';
+      }
+    });
+  });
+
+  // Review Modal Handling
+  let selectedStarRating = 5;
+  const reviewModal = document.getElementById('review-modal');
+  const closeRevBtn = document.getElementById('close-review-modal-btn');
+  const submitRevBtn = document.getElementById('submit-review-btn');
+  const starRow = document.querySelectorAll('.star-rating-star');
+
+  document.querySelectorAll('.open-review-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('review-order-number').value = btn.dataset.order;
+      document.getElementById('review-rest-title').textContent = `Rate ${btn.dataset.rest}`;
+      reviewModal.classList.add('active');
+    });
+  });
+
+  if (closeRevBtn) {
+    closeRevBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
+  }
+
+  starRow.forEach(star => {
+    star.addEventListener('click', () => {
+      selectedStarRating = parseInt(star.dataset.star);
+      starRow.forEach((s, i) => {
+        s.style.opacity = i < selectedStarRating ? '1' : '0.3';
+      });
+    });
+  });
+
+  if (submitRevBtn) {
+    submitRevBtn.addEventListener('click', async () => {
+      const ordNum = document.getElementById('review-order-number').value;
+      const comment = document.getElementById('review-comment-input').value.trim();
+
+      submitRevBtn.disabled = true;
+      submitRevBtn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch(`/api/orders/${ordNum}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: selectedStarRating, comment: comment })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.showToast('⭐ Thank you! Your review has been posted.', 'success');
+          reviewModal.classList.remove('active');
+        } else {
+          window.showToast(data.message || 'Could not submit review', 'error');
+        }
+      } catch (err) {
+        window.showToast('Error posting review', 'error');
+      } finally {
+        submitRevBtn.disabled = false;
+        submitRevBtn.textContent = 'Submit Review';
+      }
+    });
+  }
+});
+</script>
+
+<style>
+@keyframes pulse-badge {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.order-card:hover {
+  transform: translateY(-2px);
+}
+</style>
 {% endblock %}

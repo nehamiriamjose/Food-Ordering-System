@@ -57,7 +57,7 @@
     </div>
 
     <div style="background: var(--success-light); color: var(--success); padding: 10px 20px; border-radius: var(--radius-full); font-weight: 800; font-size: 1.15rem; box-shadow: var(--shadow-xs);">
-      💰 Payout: ${{ "%.2f"|format(order.delivery_fee + order.tip) }}
+      💰 Payout: ${{ "%.2f"|format((order.delivery_fee or 0) + (order.tip or 0)) }}
     </div>
   </div>
 

@@ -22,6 +22,44 @@
       </button>
     </div>
 
+    <!-- In-Card Flash / Authorization Alerts -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="auth-inline-alerts">
+          {% for category, message in messages %}
+            <div class="auth-card-alert auth-card-alert-{{ category }}" id="login-alert-box">
+              <div class="alert-icon-wrap">
+                {% if category in ('error', 'danger') %}
+                  <span>🚫</span>
+                {% elif category == 'warning' %}
+                  <span>⚠️</span>
+                {% else %}
+                  <span>✅</span>
+                {% endif %}
+              </div>
+              <div class="alert-body-wrap">
+                <div class="alert-message-text">{{ message }}</div>
+                {% if switch_to %}
+                  <div class="alert-action-wrap">
+                    <button type="button" class="btn btn-sm btn-action-switch" onclick="switchLoginRole('{{ switch_to }}')">
+                      {% if switch_to == 'customer' %}
+                        👤 Switch to Customer Sign In
+                      {% elif switch_to == 'restaurant' %}
+                        🍳 Switch to Restaurant Partner Sign In
+                      {% elif switch_to == 'courier' %}
+                        🛵 Switch to Courier Partner Sign In
+                      {% endif %}
+                    </button>
+                  </div>
+                {% endif %}
+              </div>
+              <button type="button" class="alert-dismiss-btn" onclick="this.closest('.auth-card-alert').remove()" title="Dismiss notification">✕</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <!-- Dynamic Header -->
     <div class="auth-header">
       <div class="auth-logo-badge" id="role-logo-badge">🍔</div>
@@ -34,7 +72,7 @@
       {% if next %}
       <input type="hidden" name="next" value="{{ next }}">
       {% endif %}
-      <input type="hidden" name="selected_role" id="selected-role-input" value="customer">
+      <input type="hidden" name="selected_role" id="selected-role-input" value="{{ role or 'customer' }}">
 
       <div class="form-group">
         <label for="login-email" class="form-label" id="login-email-label">Email Address</label>
@@ -197,15 +235,13 @@ function togglePasswordVisibility(inputId, btn) {
   }
 }
 
-// On page load, check if URL has ?role= query parameter
+// On page load, check server-provided role or URL ?role= param
 document.addEventListener('DOMContentLoaded', () => {
-  const params = new URLSearchParams(window.location.search);
-  const requestedRole = params.get('role');
-  if (requestedRole && roleConfig[requestedRole]) {
-    switchLoginRole(requestedRole);
-  } else {
-    switchLoginRole('customer');
-  }
+  const serverRole = {{ role | tojson if role else 'null' }};
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlRole = urlParams.get('role');
+  const initialRole = serverRole || urlRole || 'customer';
+  switchLoginRole(initialRole);
 });
 </script>
 {% endblock %}

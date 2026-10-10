@@ -17,6 +17,10 @@ function initCourierOnlineToggle() {
       const data = await res.json();
       if (data.success) {
         const text = data.is_online ? "You are now ONLINE and ready for orders!" : "You are now OFFLINE. Shift paused.";
+        const dot = document.getElementById('courier-top-status-dot');
+        if (dot) {
+          dot.className = 'status-indicator-dot ' + (data.is_online ? 'online' : 'offline');
+        }
         if (window.showToast) window.showToast(text, data.is_online ? 'success' : 'info');
       }
     } catch (err) {

@@ -6,9 +6,15 @@ from config import Config
 from typing import Any, Sequence
 
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(Config.DATABASE_PATH, timeout=20.0)
+    conn = sqlite3.connect(Config.DATABASE_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
+    conn.execute("PRAGMA cache_size = -64000")
+    conn.execute("PRAGMA temp_store = MEMORY")
+    conn.execute("PRAGMA mmap_size = 268435456")
     return conn
 
 def query_db(query: str, args: Sequence[Any] | tuple[Any, ...] = (), one: bool = False) -> Any:
@@ -302,6 +308,34 @@ def ensure_schema_migrations():
         mod_cols = [r['name'] if isinstance(r, sqlite3.Row) else r[1] for r in cur.fetchall()]
         if 'stock_quantity' not in mod_cols:
             cur.execute("ALTER TABLE modifier_options ADD COLUMN stock_quantity INTEGER DEFAULT 50")
+
+        # Create high-performance indexes for 1000+ concurrent users
+        indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+            "CREATE INDEX IF NOT EXISTS idx_restaurants_slug ON restaurants(slug)",
+            "CREATE INDEX IF NOT EXISTS idx_restaurants_featured ON restaurants(is_featured, rating)",
+            "CREATE INDEX IF NOT EXISTS idx_restaurants_cuisine ON restaurants(cuisine)",
+            "CREATE INDEX IF NOT EXISTS idx_menu_categories_rest ON menu_categories(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_menu_items_cat ON menu_items(category_id)",
+            "CREATE INDEX IF NOT EXISTS idx_menu_items_rest ON menu_items(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_modifier_groups_item ON modifier_groups(menu_item_id)",
+            "CREATE INDEX IF NOT EXISTS idx_modifier_options_group ON modifier_options(modifier_group_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cart_items_session ON cart_items(session_id)",
+            "CREATE INDEX IF NOT EXISTS idx_cart_items_user ON cart_items(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_restaurant ON orders(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_courier ON orders(courier_id)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
+            "CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)",
+            "CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_favorites_rest ON favorites(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_reviews_restaurant ON reviews(restaurant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code)",
+            "CREATE INDEX IF NOT EXISTS idx_couriers_user ON couriers(user_id)"
+        ]
+        for idx in indexes:
+            cur.execute(idx)
 
         conn.commit()
     except Exception as e:

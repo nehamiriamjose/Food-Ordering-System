@@ -15,8 +15,9 @@
     <!-- Quick Cuisine Chips -->
     <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px;">
       {% for c in cuisines %}
-      <a href="{{ url_for('search', q=c.name) }}" class="tag tag-secondary" style="padding: 6px 12px; font-size: 0.82rem;">
-        {{ c.icon }} {{ c.name }}
+      <a href="{{ url_for('restaurants_list', cuisine=c.name) }}" class="explore-chip">
+        <span class="chip-photo-avatar"><img src="{{ c.image_url }}" alt="{{ c.name }}" class="chip-avatar-img"></span>
+        <span>{{ c.name }}</span>
       </a>
       {% endfor %}
     </div>

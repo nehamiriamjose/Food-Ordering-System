@@ -794,30 +794,51 @@ ul, ol {
 .explore-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--secondary);
-  transition: var(--transition);
+  gap: 8px;
+  padding: 4px 12px 4px 5px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.chip-photo-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .explore-chip:hover {
-  background: #FFF;
-  border-color: var(--primary);
-  color: var(--primary);
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #0F172A;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
 }
 
 .explore-chip.chip-highlight {
-  background: #FFF3EB;
-  border-color: #FDBA74;
-  color: #EA580C;
+  background: #FFF7ED;
+  border-color: #FED7AA;
+  color: #C2410C;
+  font-weight: 700;
 }
 
 /* Location Picker Modal */
@@ -899,18 +920,18 @@ ul, ol {
    ========================================================================== */
 .restaurants-filter-toolbar {
   background: #FFFFFF;
-  border: 1.5px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 14px 18px;
-  margin-bottom: 32px;
-  box-shadow: 0 4px 16px -2px rgba(31, 41, 51, 0.04);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-xl);
+  padding: 10px 16px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
 .filter-toolbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   flex-wrap: nowrap;
 }
 
@@ -921,7 +942,7 @@ ul, ol {
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding: 2px 2px 4px;
+  padding: 4px 2px;
   flex: 1;
   min-width: 0;
 }
@@ -933,47 +954,77 @@ ul, ol {
 .cuisine-filter-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--secondary);
-  background: var(--bg-muted);
-  border: 1.5px solid var(--border-color);
+  gap: 10px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 9999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #334155;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
   white-space: nowrap;
   flex-shrink: 0;
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.cuisine-filter-pill .pill-icon {
-  font-size: 1.15rem;
-  line-height: 1;
+.pill-photo-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #E2E8F0;
   display: flex;
   align-items: center;
-  transition: transform 0.2s ease;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  border: 1.5px solid #FFFFFF;
+}
+
+.pill-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.pill-title {
+  font-weight: 600;
+  line-height: 1;
 }
 
 .cuisine-filter-pill:hover {
   background: #FFFFFF;
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(244, 81, 58, 0.15);
+  border-color: #CBD5E1;
+  color: #0F172A;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.cuisine-filter-pill:hover .pill-icon {
-  transform: scale(1.15);
+.cuisine-filter-pill:hover .pill-avatar-img {
+  transform: scale(1.12);
 }
 
 .cuisine-filter-pill.active {
-  background: linear-gradient(135deg, #FF4B2B 0%, #FF416C 100%);
+  background: #0F172A;
   color: #FFFFFF !important;
-  border-color: transparent;
-  box-shadow: 0 6px 18px rgba(255, 75, 43, 0.35);
+  border-color: #0F172A;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
   transform: translateY(-1px);
+}
+
+.cuisine-filter-pill.active .pill-photo-avatar {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.cuisine-filter-pill.active .pill-title {
+  color: #FFFFFF;
+  font-weight: 700;
 }
 
 .sort-control-group {
@@ -1334,6 +1385,7 @@ ul, ol {
 
 .alert-success { background: var(--success-light); color: #065F46; border: 1px solid #A7F3D0; }
 .alert-error   { background: var(--danger-light); color: #991B1B; border: 1px solid #FECACA; }
+.alert-warning { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
 .alert-info    { background: var(--info-light); color: #1E40AF; border: 1px solid #BFDBFE; }
 
 @keyframes slideDown {

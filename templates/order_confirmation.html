@@ -58,10 +58,13 @@
 
     <!-- Action Buttons -->
     <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
-      <a href="{{ url_for('order_tracking', order_number=order.order_number) }}" class="btn btn-primary btn-lg" style="padding: 14px 32px;">
+      <a href="{{ url_for('order_tracking', order_number=order.order_number) }}" class="btn btn-primary btn-lg" style="padding: 14px 28px; font-weight: 800;">
         🚀 Track Live Order Status
       </a>
-      <a href="{{ url_for('index') }}" class="btn btn-outline btn-lg">
+      <a href="{{ url_for('orders_list') }}" class="btn btn-secondary btn-lg" style="padding: 14px 28px; font-weight: 800;">
+        📜 View in Order History
+      </a>
+      <a href="{{ url_for('index') }}" class="btn btn-outline btn-lg" style="padding: 14px 24px;">
         🍽️ Continue Browsing
       </a>
     </div>

@@ -41,10 +41,15 @@ class CraveCartFullStackTestCase(unittest.TestCase):
             'password': password
         }, follow_redirects=True)
 
+    def test_unauthenticated_root_redirects_to_login(self):
+        # When unauthenticated visitor opens the website root, they land on /login
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login', response.headers.get('Location', ''))
+
     def test_guest_public_routes_render_ok(self):
-        # Verify unauthenticated guest can view home, browse restaurants, view menus, search, offers, auth, and help
+        # Verify unauthenticated guest can view public pages, auth, and help
         routes = [
-            '/',
             '/restaurants',
             '/restaurants/1',
             '/search?q=pizza',
@@ -132,6 +137,56 @@ class CraveCartFullStackTestCase(unittest.TestCase):
         })
         self.assertEqual(next_res.status_code, 302)
         self.assertIn('/profile', next_res.headers.get('Location', ''))
+
+    def test_strict_role_login_validation(self):
+        # Customer cannot sign in via Restaurant or Courier tabs
+        res_rest = self.client.post('/login', data={
+            'email': 'alex@cravecart.demo',
+            'password': 'password123',
+            'selected_role': 'restaurant'
+        })
+        self.assertEqual(res_rest.status_code, 200)
+        self.assertIn(b"is registered as a Customer account and cannot sign into the Restaurant", res_rest.data)
+
+        res_cour = self.client.post('/login', data={
+            'email': 'alex@cravecart.demo',
+            'password': 'password123',
+            'selected_role': 'courier'
+        })
+        self.assertEqual(res_cour.status_code, 200)
+        self.assertIn(b"is registered as a Customer account and cannot sign into the Courier", res_cour.data)
+
+        # Restaurant cannot sign in via Customer tab
+        res_cust = self.client.post('/login', data={
+            'email': 'mario@emberandcrust.demo',
+            'password': 'password123',
+            'selected_role': 'customer'
+        })
+        self.assertEqual(res_cust.status_code, 200)
+        self.assertIn(b"is registered as a Restaurant Partner account", res_cust.data)
+
+        # Courier cannot sign in via Customer tab
+        res_cour_as_cust = self.client.post('/login', data={
+            'email': 'marcus@courier.demo',
+            'password': 'password123',
+            'selected_role': 'customer'
+        })
+        self.assertEqual(res_cour_as_cust.status_code, 200)
+        self.assertIn(b"is registered as a Courier Partner account", res_cour_as_cust.data)
+
+    def test_customer_blocked_from_partner_and_courier_portals(self):
+        # Log in as Customer
+        self.login_as('alex@cravecart.demo', 'password123')
+        
+        # Accessing /partner redirects customer back to /
+        resp_partner = self.client.get('/partner')
+        self.assertEqual(resp_partner.status_code, 302)
+        self.assertEqual(resp_partner.headers.get('Location', ''), '/')
+
+        # Accessing /courier redirects customer back to /
+        resp_courier = self.client.get('/courier')
+        self.assertEqual(resp_courier.status_code, 302)
+        self.assertEqual(resp_courier.headers.get('Location', ''), '/')
 
     def test_signup_flow(self):
         # Sign up a new customer account
@@ -762,37 +817,46 @@ class CraveCartFullStackTestCase(unittest.TestCase):
         # Today's earnings should start at $0.00 for a fresh courier with 0 trips
         self.assertIn(b"$0.00", overview_res.data)
 
-        # 3. Create a test order ready for pickup
+        # 3. Create a test order placed by a customer (unassigned, courier_id = NULL)
         cust = query_db("SELECT id FROM users WHERE role = 'customer' LIMIT 1", one=True)
         order_id = execute_db('''
             INSERT INTO orders (order_number, customer_id, restaurant_id, courier_id, status, subtotal, tax, delivery_fee, tip, discount, total, payment_method, delivery_address_json)
             VALUES ('ORD-MINU-01', ?, 1, NULL, 'ready', 25.00, 2.00, 3.50, 4.00, 0.00, 34.50, 'Credit Card', '{"street": "456 Broadway", "city": "New York"}')
         ''', (cust['id'],))
 
-        # 4. View deliveries queue and accept the available order
+        # 4. View deliveries queue: Unassigned order must NOT appear in Minu's deliveries queue
         queue_res = self.client.get('/courier/deliveries')
         self.assertEqual(queue_res.status_code, 200)
-        self.assertIn(b"ORD-MINU-01", queue_res.data)
+        self.assertNotIn(b"ORD-MINU-01", queue_res.data)
 
-        # 5. Advance status: Accept & Pick up
+        # 5. If unassigned courier attempts to advance status before being assigned -> 403 Forbidden
+        unauth_pick = self.client.post('/api/orders/ORD-MINU-01/advance-status', json={'status': 'picked_up'})
+        self.assertEqual(unauth_pick.status_code, 403)
+
+        # 6. Restaurant Partner logs in and assigns ORD-MINU-01 specifically to Minu
+        minu_courier = query_db("SELECT * FROM couriers WHERE name = 'Minu'", one=True)
+        self.login_as("mario@emberandcrust.demo", "password123")
+        assign_res = self.client.post('/api/orders/ORD-MINU-01/assign-courier', json={'courier_id': minu_courier['id']})
+        self.assertEqual(assign_res.status_code, 200)
+
+        # 7. Minu logs back in: Now ORD-MINU-01 appears in Minu's assigned queue
+        self.login_as("minu@courier.demo", "password123")
+        queue_res2 = self.client.get('/courier/deliveries')
+        self.assertEqual(queue_res2.status_code, 200)
+        self.assertIn(b"ORD-MINU-01", queue_res2.data)
+
+        # 8. Advance status: Accept & Pick up -> On the way -> Delivered
         pick_res = self.client.post('/api/orders/ORD-MINU-01/advance-status', json={'status': 'picked_up'})
         self.assertEqual(pick_res.status_code, 200)
         self.assertTrue(pick_res.get_json()['success'])
 
-        # Verify courier is assigned
-        ord_db = query_db("SELECT * FROM orders WHERE order_number = 'ORD-MINU-01'", one=True)
-        self.assertEqual(ord_db['status'], 'picked_up')
-        minu_courier = query_db("SELECT * FROM couriers WHERE name = 'Minu'", one=True)
-        self.assertEqual(ord_db['courier_id'], minu_courier['id'])
-
-        # 6. Advance status: On the way -> Delivered
         dep_res = self.client.post('/api/orders/ORD-MINU-01/advance-status', json={'status': 'on_the_way'})
         self.assertEqual(dep_res.status_code, 200)
 
         deliv_res = self.client.post('/api/orders/ORD-MINU-01/advance-status', json={'status': 'delivered'})
         self.assertEqual(deliv_res.status_code, 200)
 
-        # 7. Check trip count increment and earnings update
+        # 9. Check trip count increment and earnings update
         minu_courier_after = query_db("SELECT * FROM couriers WHERE id = ?", (minu_courier['id'],), one=True)
         self.assertEqual(minu_courier_after['total_trips'], 1)
 
@@ -801,16 +865,21 @@ class CraveCartFullStackTestCase(unittest.TestCase):
         # Payout for this trip: $3.50 delivery fee + $4.00 tip = $7.50
         self.assertIn(b"$7.50", overview_after.data)
 
-        # 8. Update vehicle profile via /profile
-        prof_res = self.client.post('/profile', data={
-            'name': 'Minu Rider',
+        # 10. Update vehicle profile via dedicated /courier/profile
+        courier_prof_get = self.client.get('/courier/profile')
+        self.assertEqual(courier_prof_get.status_code, 200)
+        self.assertIn(b"Vehicle & Courier Profile", courier_prof_get.data)
+
+        courier_prof_post = self.client.post('/courier/profile', data={
+            'name': 'Minu Fast Rider',
             'phone': '(555) 999-8888',
             'vehicle_type': 'Bicycle',
             'vehicle_plate': 'BIKE-09'
         }, follow_redirects=True)
-        self.assertEqual(prof_res.status_code, 200)
+        self.assertEqual(courier_prof_post.status_code, 200)
 
         minu_courier_updated = query_db("SELECT * FROM couriers WHERE id = ?", (minu_courier['id'],), one=True)
+        self.assertEqual(minu_courier_updated['name'], 'Minu Fast Rider')
         self.assertEqual(minu_courier_updated['vehicle_type'], 'Bicycle')
         self.assertEqual(minu_courier_updated['vehicle_plate'], 'BIKE-09')
 
@@ -869,6 +938,145 @@ class CraveCartFullStackTestCase(unittest.TestCase):
         self.assertEqual(freed_courier['status_key'], 'available')
         self.assertTrue(freed_courier['is_free'])
         self.assertEqual(freed_courier['status_symbol'], '🟢')
+
+    def test_customer_order_goes_to_kitchen_unassigned_and_courier_access_controlled(self):
+        # 1. Customer logs in and places an order
+        self.login_as("alex@cravecart.demo", "password123")
+        self.client.post('/api/cart/add', json={
+            'menu_item_id': 1,
+            'quantity': 1,
+            'modifiers': []
+        })
+        checkout_res = self.client.post('/api/checkout', json={
+            'tip': 5.00,
+            'delivery_instructions': 'Ring doorbell on 2nd floor'
+        })
+        self.assertEqual(checkout_res.status_code, 200)
+        ord_num = checkout_res.get_json()['order_number']
+
+        # 2. Verify order in DB: courier_id MUST be NULL upon checkout
+        ord_db = query_db("SELECT * FROM orders WHERE order_number = ?", (ord_num,), one=True)
+        self.assertIsNotNone(ord_db)
+        self.assertIsNone(ord_db['courier_id'])
+        self.assertEqual(ord_db['status'], 'placed')
+
+        # 3. Log in as Courier Marcus: the order must NOT appear in Marcus's active deliveries
+        self.login_as("marcus@courier.demo", "password123")
+        cour_res = self.client.get('/courier/deliveries')
+        self.assertEqual(cour_res.status_code, 200)
+        self.assertNotIn(ord_num.encode(), cour_res.data)
+
+        # Marcus attempts to accept or advance the unassigned order -> 403 Forbidden
+        unauth_adv = self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'picked_up'})
+        self.assertEqual(unauth_adv.status_code, 403)
+
+        # 4. Log in as Restaurant Partner: order appears in kitchen order board
+        self.login_as("mario@emberandcrust.demo", "password123")
+        kitchen_res = self.client.get('/partner/orders')
+        self.assertEqual(kitchen_res.status_code, 200)
+        self.assertIn(ord_num.encode(), kitchen_res.data)
+
+        # Restaurant prepares the order: placed -> confirmed -> preparing -> ready
+        self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'confirmed'})
+        self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'preparing'})
+        self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'ready'})
+
+        # 5. Restaurant explicitly assigns Marcus (courier_id = 1)
+        marcus_courier = query_db("SELECT id FROM couriers WHERE name LIKE 'Marcus%'", one=True)
+        assign_res = self.client.post(f'/api/orders/{ord_num}/assign-courier', json={'courier_id': marcus_courier['id']})
+        self.assertEqual(assign_res.status_code, 200)
+        self.assertTrue(assign_res.get_json()['success'])
+
+        # 6. Log back in as Marcus: order is now in Marcus's deliveries queue with action buttons
+        self.login_as("marcus@courier.demo", "password123")
+        cour_res_assigned = self.client.get('/courier/deliveries')
+        self.assertEqual(cour_res_assigned.status_code, 200)
+        self.assertIn(ord_num.encode(), cour_res_assigned.data)
+        self.assertIn(b"Accept Mission", cour_res_assigned.data)
+
+        # 7. Marcus completes the delivery lifecycle: picked_up -> on_the_way -> delivered
+        p_res = self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'picked_up'})
+        self.assertEqual(p_res.status_code, 200)
+
+        w_res = self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'on_the_way'})
+        self.assertEqual(w_res.status_code, 200)
+
+        d_res = self.client.post(f'/api/orders/{ord_num}/advance-status', json={'status': 'delivered'})
+        self.assertEqual(d_res.status_code, 200)
+
+        # Verify order in DB has final status 'delivered' and courier_id set
+        final_db = query_db("SELECT * FROM orders WHERE order_number = ?", (ord_num,), one=True)
+        self.assertEqual(final_db['status'], 'delivered')
+        self.assertEqual(final_db['courier_id'], marcus_courier['id'])
+
+    def test_order_creation_tracking_mark_delivered_and_history(self):
+        """Verify full customer lifecycle: place order -> see in history as active -> track -> mark delivered -> see in history as delivered -> review."""
+        # 1. Customer Alex logs in
+        self.login_as("alex@cravecart.demo", "password123")
+        alex_user = query_db("SELECT id FROM users WHERE email = 'alex@cravecart.demo'", one=True)
+
+        # 2. Add dish to cart and place order
+        item = query_db("SELECT * FROM menu_items WHERE id = 1", one=True)
+        self.client.post('/api/cart/add', json={'item_id': item['id'], 'quantity': 2, 'modifiers': []})
+
+        place_res = self.client.post('/api/checkout', json={
+            'delivery_type': 'delivery',
+            'payment_method': 'Visa •••• 4242',
+            'tip': 4.0
+        })
+        self.assertEqual(place_res.status_code, 200)
+        p_data = place_res.get_json()
+        self.assertTrue(p_data['success'])
+        ord_num = p_data['order_number']
+
+        # 3. Verify order exists in DB with status 'placed'
+        ord_db = query_db("SELECT * FROM orders WHERE order_number = ?", (ord_num,), one=True)
+        self.assertIsNotNone(ord_db)
+        self.assertEqual(ord_db['status'], 'placed')
+        self.assertEqual(ord_db['customer_id'], alex_user['id'])
+
+        # 4. View /orders history page -> order should be present in active deliveries
+        orders_page_res = self.client.get('/orders')
+        self.assertEqual(orders_page_res.status_code, 200)
+        self.assertIn(ord_num.encode(), orders_page_res.data)
+        self.assertIn(b"Active Deliveries", orders_page_res.data)
+        self.assertIn(b"I Have Received My Order", orders_page_res.data)
+
+        # 5. View /orders/<ord_num> tracking page
+        tracking_res = self.client.get(f'/orders/{ord_num}')
+        self.assertEqual(tracking_res.status_code, 200)
+        self.assertIn(ord_num.encode(), tracking_res.data)
+        self.assertIn(b"Food Arrived at Your Location?", tracking_res.data)
+
+        # 6. Customer marks the order as received / delivered
+        mark_res = self.client.post(f'/api/orders/{ord_num}/mark-delivered')
+        self.assertEqual(mark_res.status_code, 200)
+        m_data = mark_res.get_json()
+        self.assertTrue(m_data['success'])
+        self.assertEqual(m_data['status'], 'delivered')
+
+        # 7. Check database: order is now 'delivered'
+        updated_ord = query_db("SELECT * FROM orders WHERE order_number = ?", (ord_num,), one=True)
+        self.assertEqual(updated_ord['status'], 'delivered')
+
+        # 8. View /orders page again -> order should now be displayed under Delivered Orders History
+        orders_after_res = self.client.get('/orders')
+        self.assertEqual(orders_after_res.status_code, 200)
+        self.assertIn(ord_num.encode(), orders_after_res.data)
+        self.assertIn(b"Delivered Orders History", orders_after_res.data)
+        self.assertIn(b"Order Delivered", orders_after_res.data)
+
+        # 9. Customer submits a review on the delivered order
+        rev_res = self.client.post(f'/api/orders/{ord_num}/review', json={
+            'rating': 5,
+            'comment': 'Delicious hot pizza delivered fast! 10/10'
+        })
+        self.assertEqual(rev_res.status_code, 200)
+        self.assertTrue(rev_res.get_json()['success'])
+
+        rev_db = query_db("SELECT * FROM reviews WHERE user_id = ? AND comment LIKE '%10/10%'", (alex_user['id'],), one=True)
+        self.assertIsNotNone(rev_db)
+        self.assertEqual(rev_db['rating'], 5)
 
 if __name__ == '__main__':
     unittest.main()
